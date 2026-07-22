@@ -40,13 +40,17 @@ class FeeController extends Controller {
         $recentInvoices = $stmt->fetchAll();
         
         $feeHeads = $feeHeadModel->getActive();
+        $feeHeadPaymentModel = $this->model('FeeHeadPayment');
+        $academicYear = getAcademicYearName();
+        $feeBreakdown = $feeHeadPaymentModel->getTuitionVsOtherBreakdown(null, null, $academicYear);
         
         $data = [
             'title' => 'Fee Management - ' . APP_NAME,
             'pendingInvoices' => $pendingInvoices,
             'outstandingBalance' => $outstandingBalance,
             'recentInvoices' => $recentInvoices,
-            'feeHeads' => $feeHeads
+            'feeHeads' => $feeHeads,
+            'feeBreakdown' => $feeBreakdown
         ];
         
         $this->view('fees/index', $data);

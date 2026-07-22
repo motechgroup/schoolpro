@@ -15,39 +15,55 @@
     </div>
     
     <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div class="bg-white rounded-lg shadow p-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-600 text-sm">Pending Invoices</p>
-                    <p class="text-3xl font-bold text-red-600"><?php echo number_format($pendingInvoices); ?></p>
+                    <p class="text-gray-600 text-xs font-semibold uppercase">🎓 Tuition Fees Collected</p>
+                    <p class="text-2xl font-bold text-blue-700 mt-1"><?php echo formatCurrency($feeBreakdown['tuition']['collected'] ?? 0); ?></p>
+                    <p class="text-xs text-gray-500 mt-1">Billed: <?php echo formatCurrency($feeBreakdown['tuition']['billed'] ?? 0); ?></p>
                 </div>
-                <div class="text-red-600 text-4xl">
-                    <i class="fas fa-file-invoice"></i>
+                <div class="text-blue-500 text-3xl">
+                    <i class="fas fa-graduation-cap"></i>
                 </div>
             </div>
         </div>
-        
-        <div class="bg-white rounded-lg shadow p-6">
+
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-600 text-sm">Outstanding Balance</p>
-                    <p class="text-3xl font-bold text-orange-600"><?php echo formatCurrency($outstandingBalance); ?></p>
+                    <p class="text-gray-600 text-xs font-semibold uppercase">📋 Other Fee Heads Collected</p>
+                    <p class="text-2xl font-bold text-green-700 mt-1"><?php echo formatCurrency($feeBreakdown['other']['collected'] ?? 0); ?></p>
+                    <p class="text-xs text-gray-500 mt-1">Billed: <?php echo formatCurrency($feeBreakdown['other']['billed'] ?? 0); ?></p>
                 </div>
-                <div class="text-orange-600 text-4xl">
+                <div class="text-green-500 text-3xl">
+                    <i class="fas fa-list-ul"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-xs font-semibold uppercase">Outstanding Balance</p>
+                    <p class="text-2xl font-bold text-orange-600 mt-1"><?php echo formatCurrency($outstandingBalance); ?></p>
+                    <p class="text-xs text-gray-500 mt-1">Pending: <?php echo number_format($pendingInvoices); ?> Invoices</p>
+                </div>
+                <div class="text-orange-600 text-3xl">
                     <i class="fas fa-money-bill-wave"></i>
                 </div>
             </div>
         </div>
         
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-600 text-sm">Active Fee Heads</p>
-                    <p class="text-3xl font-bold text-blue-600"><?php echo count($feeHeads); ?></p>
+                    <p class="text-gray-600 text-xs font-semibold uppercase">Active Fee Heads</p>
+                    <p class="text-2xl font-bold text-purple-600 mt-1"><?php echo count($feeHeads); ?></p>
+                    <p class="text-xs text-gray-500 mt-1">Tuition + <?php echo max(0, count($feeHeads) - 1); ?> Other Heads</p>
                 </div>
-                <div class="text-blue-600 text-4xl">
-                    <i class="fas fa-list"></i>
+                <div class="text-purple-600 text-3xl">
+                    <i class="fas fa-cubes"></i>
                 </div>
             </div>
         </div>

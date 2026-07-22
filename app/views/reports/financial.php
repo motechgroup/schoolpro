@@ -29,21 +29,77 @@
     
     <!-- Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <div class="bg-white rounded-lg shadow p-6">
-            <p class="text-gray-600 text-sm mb-2">Total Invoices</p>
-            <p class="text-3xl font-bold text-blue-600"><?php echo number_format($summary['total_invoices'] ?? 0); ?></p>
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
+            <p class="text-gray-600 text-xs font-semibold uppercase mb-1">Total Year Billed</p>
+            <p class="text-2xl font-bold text-purple-700"><?php echo formatCurrency($summary['total_billed'] ?? 0); ?></p>
+            <p class="text-xs text-gray-500 mt-1"><?php echo number_format($summary['total_invoices'] ?? 0); ?> Invoices Issued</p>
         </div>
-        <div class="bg-white rounded-lg shadow p-6">
-            <p class="text-gray-600 text-sm mb-2">Total Billed</p>
-            <p class="text-3xl font-bold text-purple-600"><?php echo formatCurrency($summary['total_billed'] ?? 0); ?></p>
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+            <p class="text-gray-600 text-xs font-semibold uppercase mb-1">🎓 Tuition Fees Collected</p>
+            <p class="text-2xl font-bold text-blue-700"><?php echo formatCurrency($feeBreakdown['tuition']['collected'] ?? 0); ?></p>
+            <p class="text-xs text-gray-500 mt-1">Billed: <?php echo formatCurrency($feeBreakdown['tuition']['billed'] ?? 0); ?></p>
         </div>
-        <div class="bg-white rounded-lg shadow p-6">
-            <p class="text-gray-600 text-sm mb-2">Total Paid</p>
-            <p class="text-3xl font-bold text-green-600"><?php echo formatCurrency($summary['total_paid'] ?? 0); ?></p>
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+            <p class="text-gray-600 text-xs font-semibold uppercase mb-1">📋 Other Fee Heads Collected</p>
+            <p class="text-2xl font-bold text-green-700"><?php echo formatCurrency($feeBreakdown['other']['collected'] ?? 0); ?></p>
+            <p class="text-xs text-gray-500 mt-1">Billed: <?php echo formatCurrency($feeBreakdown['other']['billed'] ?? 0); ?></p>
         </div>
-        <div class="bg-white rounded-lg shadow p-6">
-            <p class="text-gray-600 text-sm mb-2">Outstanding Balance</p>
-            <p class="text-3xl font-bold text-red-600"><?php echo formatCurrency($summary['total_balance'] ?? 0); ?></p>
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-red-500">
+            <p class="text-gray-600 text-xs font-semibold uppercase mb-1">Outstanding Balance</p>
+            <p class="text-2xl font-bold text-red-700"><?php echo formatCurrency($summary['total_balance'] ?? 0); ?></p>
+            <p class="text-xs text-gray-500 mt-1">Total Paid: <?php echo formatCurrency($summary['total_paid'] ?? 0); ?></p>
+        </div>
+    </div>
+
+    <!-- Fee Heads Breakdown Section -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 class="text-xl font-bold mb-4 flex items-center">
+            <i class="fas fa-layer-group text-blue-600 mr-2"></i>Tuition vs Other Fee Heads Collection Analysis
+        </h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fee Head / Category</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Billed</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Collected</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Outstanding Balance</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Collection Rate</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <?php if (!empty($feeBreakdown['headBreakdown'])): ?>
+                    <?php foreach ($feeBreakdown['headBreakdown'] as $head): ?>
+                    <?php 
+                        $rate = ($head['total_billed'] > 0) ? round(($head['total_collected'] / $head['total_billed']) * 100, 1) : 0;
+                    ?>
+                    <tr class="<?php echo $head['is_tuition'] ? 'bg-blue-50/50 font-medium' : ''; ?>">
+                        <td class="px-4 py-3 text-sm">
+                            <?php if ($head['is_tuition']): ?>
+                                <span class="font-bold text-blue-800">🎓 <?php echo htmlspecialchars($head['fee_head_name']); ?></span>
+                            <?php else: ?>
+                                <span>📋 <?php echo htmlspecialchars($head['fee_head_name']); ?></span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-0.5 text-xs rounded font-semibold <?php echo $head['is_tuition'] ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'; ?>">
+                                <?php echo $head['is_tuition'] ? 'Tuition Fee' : 'Other Fee Head'; ?>
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-right"><?php echo formatCurrency($head['total_billed']); ?></td>
+                        <td class="px-4 py-3 text-sm text-right text-green-600 font-semibold"><?php echo formatCurrency($head['total_collected']); ?></td>
+                        <td class="px-4 py-3 text-sm text-right text-red-600 font-semibold"><?php echo formatCurrency($head['balance']); ?></td>
+                        <td class="px-4 py-3 text-center text-sm font-semibold">
+                            <span class="px-2 py-0.5 text-xs rounded <?php echo $rate >= 80 ? 'bg-green-100 text-green-800' : ($rate >= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'); ?>">
+                                <?php echo $rate; ?>%
+                            </span>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
         </div>
     </div>
     

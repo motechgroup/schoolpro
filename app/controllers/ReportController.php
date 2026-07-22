@@ -126,13 +126,19 @@ class ReportController extends Controller {
         $stmt->execute([$startDate, $endDate]);
         $recentPayments = $stmt->fetchAll();
         
+        $feeHeadPaymentModel = $this->model('FeeHeadPayment');
+        $academicYear = getAcademicYearName($_GET['academic_year'] ?? null);
+        $feeBreakdown = $feeHeadPaymentModel->getTuitionVsOtherBreakdown($startDate, $endDate, $academicYear);
+        
         $data = [
             'title' => 'Financial Report - ' . APP_NAME,
             'summary' => $summary,
             'recentPayments' => $recentPayments,
+            'feeBreakdown' => $feeBreakdown,
             'filters' => [
                 'start_date' => $startDate,
-                'end_date' => $endDate
+                'end_date' => $endDate,
+                'academic_year' => $academicYear
             ]
         ];
         
