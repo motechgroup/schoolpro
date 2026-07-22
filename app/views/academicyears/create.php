@@ -13,11 +13,25 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Academic Year Name *</label>
-                    <input type="text" name="name" required 
-                           placeholder="e.g., 2024/2025"
-                           class="w-full border rounded px-3 py-2"
-                           pattern="\d{4}/\d{4}">
-                    <p class="text-xs text-gray-500 mt-1">Format: YYYY/YYYY (e.g., 2024/2025)</p>
+                    <div class="flex space-x-2">
+                        <select id="name_preset" onchange="if(this.value !== 'custom') { document.getElementById('name_input').value = this.value; }" class="border rounded px-3 py-2 bg-gray-50 text-sm">
+                            <option value="2026" selected>2026</option>
+                            <option value="2027">2027</option>
+                            <option value="2025">2025</option>
+                            <option value="2028">2028</option>
+                            <option value="2029">2029</option>
+                            <option value="2030">2030</option>
+                            <option value="2026/2027">2026/2027</option>
+                            <option value="2025/2026">2025/2026</option>
+                            <option value="custom">Custom...</option>
+                        </select>
+                        <input type="text" name="name" id="name_input" required 
+                               value="2026"
+                               class="flex-1 border rounded px-3 py-2"
+                               pattern="\d{4}(/\d{4})?"
+                               placeholder="e.g., 2026 or 2026/2027">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Single calendar year (e.g. 2026) or split year (e.g. 2026/2027)</p>
                 </div>
                 
                 <div class="grid grid-cols-2 gap-4">
