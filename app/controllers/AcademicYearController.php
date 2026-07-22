@@ -201,18 +201,22 @@ class AcademicYearController extends Controller {
             return;
         }
         
-        // Verify academic year exists
+        // Verify academic year exists & automatically expand its bounds if term dates extend outside
         $academicYear = $academicYearModel->findById($data['academic_year_id']);
         if (!$academicYear) {
             $this->json(['success' => false, 'message' => 'Academic year not found']);
             return;
         }
         
-        // Verify term dates are within academic year
-        if (strtotime($data['start_date']) < strtotime($academicYear['start_date']) || 
-            strtotime($data['end_date']) > strtotime($academicYear['end_date'])) {
-            $this->json(['success' => false, 'message' => 'Term dates must be within the academic year']);
-            return;
+        $ayUpdate = [];
+        if (strtotime($data['start_date']) < strtotime($academicYear['start_date'])) {
+            $ayUpdate['start_date'] = $data['start_date'];
+        }
+        if (strtotime($data['end_date']) > strtotime($academicYear['end_date'])) {
+            $ayUpdate['end_date'] = $data['end_date'];
+        }
+        if (!empty($ayUpdate)) {
+            $academicYearModel->update($academicYear['id'], $ayUpdate);
         }
         
         try {
@@ -269,13 +273,18 @@ class AcademicYearController extends Controller {
             return;
         }
         
-        // Get academic year to verify dates
+        // Get academic year & auto-expand bounds if term extends outside
         $academicYear = $academicYearModel->findById($term['academic_year_id']);
         if ($academicYear) {
-            if (strtotime($data['start_date']) < strtotime($academicYear['start_date']) || 
-                strtotime($data['end_date']) > strtotime($academicYear['end_date'])) {
-                $this->json(['success' => false, 'message' => 'Term dates must be within the academic year']);
-                return;
+            $ayUpdate = [];
+            if (strtotime($data['start_date']) < strtotime($academicYear['start_date'])) {
+                $ayUpdate['start_date'] = $data['start_date'];
+            }
+            if (strtotime($data['end_date']) > strtotime($academicYear['end_date'])) {
+                $ayUpdate['end_date'] = $data['end_date'];
+            }
+            if (!empty($ayUpdate)) {
+                $academicYearModel->update($academicYear['id'], $ayUpdate);
             }
         }
         
