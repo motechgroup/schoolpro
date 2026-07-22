@@ -8,7 +8,20 @@
     
     <!-- Filters -->
     <div class="bg-white rounded-lg shadow p-4 mb-6">
-        <form method="GET" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+                <select name="academic_year" class="w-full border rounded px-3 py-2">
+                    <option value="">All Academic Years</option>
+                    <?php if (!empty($academicYears)): ?>
+                    <?php foreach ($academicYears as $ay): ?>
+                        <option value="<?php echo htmlspecialchars($ay['name']); ?>" <?php echo ($filters['academic_year'] == $ay['name']) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($ay['name']); ?> <?php echo $ay['is_current'] ? '(Current)' : ''; ?>
+                        </option>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+            </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                 <input type="date" name="start_date" value="<?php echo htmlspecialchars($filters['start_date']); ?>" 
@@ -20,7 +33,7 @@
                        class="w-full border rounded px-3 py-2">
             </div>
             <div class="flex items-end">
-                <button type="submit" class="w-full bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+                <button type="submit" class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium">
                     <i class="fas fa-filter mr-2"></i>Generate Report
                 </button>
             </div>

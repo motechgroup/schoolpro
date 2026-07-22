@@ -87,41 +87,70 @@ class FeeHeadPayment extends Model {
      * Get Tuition vs Other Fee Heads collection breakdown
      */
     public function getTuitionVsOtherBreakdown($startDate = null, $endDate = null, $academicYear = null) {
-        $params = [];
-        $whereClauses = ["sfh.status = 'active'"];
+        $billedWhere = "status = 'active'";
+        $billedParams = [];
         
         if (!empty($academicYear)) {
-            $whereClauses[] = "sfh.academic_year = ?";
-            $params[] = $academicYear;
+            $billedWhere .= " AND academic_year = ?";
+            $billedParams[] = $academicYear;
         }
         
-        $whereSql = implode(" AND ", $whereClauses);
+        // 1. Get total billed per fee head
+        $billedSql = "SELECT fee_head_id, COALESCE(SUM(amount), 0) as total_billed 
+                      FROM student_fee_heads 
+                      WHERE {$billedWhere} 
+                      GROUP BY fee_head_id";
+        $stmt = $this->db->prepare($billedSql);
+        $stmt->execute($billedParams);
+        $billedRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Fee head breakdown query
-        $sql = "SELECT 
-                    fh.id as fee_head_id,
-                    fh.name as fee_head_name,
-                    fh.code as fee_head_code,
-                    COALESCE(SUM(sfh.amount), 0) as total_billed,
-                    COALESCE(SUM(fhp.amount), 0) as total_collected
-                FROM fee_heads fh
-                LEFT JOIN student_fee_heads sfh ON fh.id = sfh.fee_head_id AND {$whereSql}
-                LEFT JOIN fee_head_payments fhp ON sfh.id = fhp.student_fee_head_id
-                GROUP BY fh.id, fh.name, fh.code
-                ORDER BY (CASE WHEN fh.code = 'TUITION' OR LOWER(fh.name) LIKE '%tuition%' THEN 0 ELSE 1 END), fh.name";
-                
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        $headBreakdown = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $billedMap = [];
+        foreach ($billedRows as $b) {
+            $billedMap[$b['fee_head_id']] = floatval($b['total_billed']);
+        }
+        
+        // 2. Get total collected per fee head
+        $collectedWhere = "1=1";
+        $collectedParams = [];
+        
+        if (!empty($academicYear)) {
+            $collectedWhere .= " AND sfh.academic_year = ?";
+            $collectedParams[] = $academicYear;
+        }
+        
+        if (!empty($startDate) && !empty($endDate)) {
+            $collectedWhere .= " AND p.payment_date BETWEEN ? AND ?";
+            $collectedParams[] = $startDate;
+            $collectedParams[] = $endDate;
+        }
+        
+        $collectedSql = "SELECT sfh.fee_head_id, COALESCE(SUM(fhp.amount), 0) as total_collected 
+                         FROM fee_head_payments fhp 
+                         JOIN student_fee_heads sfh ON fhp.student_fee_head_id = sfh.id 
+                         JOIN payments p ON fhp.payment_id = p.id 
+                         WHERE {$collectedWhere} 
+                         GROUP BY sfh.fee_head_id";
+        $stmt = $this->db->prepare($collectedSql);
+        $stmt->execute($collectedParams);
+        $collectedRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $collectedMap = [];
+        foreach ($collectedRows as $c) {
+            $collectedMap[$c['fee_head_id']] = floatval($c['total_collected']);
+        }
+        
+        // 3. Fetch all fee heads
+        $feeHeads = $this->db->query("SELECT id as fee_head_id, name as fee_head_name, code as fee_head_code FROM fee_heads ORDER BY (CASE WHEN code = 'TUITION' OR LOWER(name) LIKE '%tuition%' THEN 0 ELSE 1 END), name")->fetchAll(PDO::FETCH_ASSOC);
         
         $tuitionBilled = 0;
         $tuitionCollected = 0;
         $otherBilled = 0;
         $otherCollected = 0;
         
-        foreach ($headBreakdown as &$item) {
-            $item['total_billed'] = floatval($item['total_billed'] ?? 0);
-            $item['total_collected'] = floatval($item['total_collected'] ?? 0);
+        foreach ($feeHeads as &$item) {
+            $fhId = $item['fee_head_id'];
+            $item['total_billed'] = $billedMap[$fhId] ?? 0;
+            $item['total_collected'] = $collectedMap[$fhId] ?? 0;
             $item['balance'] = max(0, $item['total_billed'] - $item['total_collected']);
             $isTuition = ($item['fee_head_code'] === 'TUITION' || stripos($item['fee_head_name'], 'tuition') !== false);
             $item['is_tuition'] = $isTuition;
@@ -133,29 +162,6 @@ class FeeHeadPayment extends Model {
                 $otherBilled += $item['total_billed'];
                 $otherCollected += $item['total_collected'];
             }
-        }
-        
-        // Check direct payments to handle payments before fee head breakdown was assigned
-        $dateWhere = "";
-        $dateParams = [];
-        if (!empty($startDate) && !empty($endDate)) {
-            $dateWhere = " WHERE p.payment_date BETWEEN ? AND ?";
-            $dateParams = [$startDate, $endDate];
-        }
-        
-        $totalDirectPaidStmt = $this->db->prepare("SELECT COALESCE(SUM(p.amount), 0) as total_direct FROM payments p {$dateWhere}");
-        $totalDirectPaidStmt->execute($dateParams);
-        $totalDirectPaid = floatval($totalDirectPaidStmt->fetch()['total_direct'] ?? 0);
-        
-        $allocatedPaidStmt = $this->db->prepare("SELECT COALESCE(SUM(fhp.amount), 0) as total_allocated 
-                                           FROM fee_head_payments fhp 
-                                           JOIN payments p ON fhp.payment_id = p.id {$dateWhere}");
-        $allocatedPaidStmt->execute($dateParams);
-        $totalAllocatedPaid = floatval($allocatedPaidStmt->fetch()['total_allocated'] ?? 0);
-        
-        $unallocatedPaid = max(0, $totalDirectPaid - $totalAllocatedPaid);
-        if ($unallocatedPaid > 0) {
-            $tuitionCollected += $unallocatedPaid;
         }
         
         return [
@@ -174,8 +180,7 @@ class FeeHeadPayment extends Model {
                 'collected' => $tuitionCollected + $otherCollected,
                 'balance' => max(0, ($tuitionBilled + $otherBilled) - ($tuitionCollected + $otherCollected))
             ],
-            'headBreakdown' => $headBreakdown
+            'headBreakdown' => $feeHeads
         ];
     }
 }
-
