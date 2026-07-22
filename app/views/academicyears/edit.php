@@ -17,25 +17,24 @@
                     
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Academic Year Name *</label>
-                        <div class="flex space-x-2">
-                            <select id="name_preset" onchange="if(this.value !== 'custom') { document.getElementById('name_input').value = this.value; }" class="border rounded px-3 py-2 bg-gray-50 text-sm">
-                                <option value="custom">-- Select Preset --</option>
-                                <option value="2026" <?php echo ($academicYear['name'] == '2026') ? 'selected' : ''; ?>>2026</option>
-                                <option value="2027" <?php echo ($academicYear['name'] == '2027') ? 'selected' : ''; ?>>2027</option>
-                                <option value="2025" <?php echo ($academicYear['name'] == '2025') ? 'selected' : ''; ?>>2025</option>
-                                <option value="2028" <?php echo ($academicYear['name'] == '2028') ? 'selected' : ''; ?>>2028</option>
-                                <option value="2029" <?php echo ($academicYear['name'] == '2029') ? 'selected' : ''; ?>>2029</option>
-                                <option value="2030" <?php echo ($academicYear['name'] == '2030') ? 'selected' : ''; ?>>2030</option>
-                                <option value="2026/2027" <?php echo ($academicYear['name'] == '2026/2027') ? 'selected' : ''; ?>>2026/2027</option>
-                                <option value="2025/2026" <?php echo ($academicYear['name'] == '2025/2026') ? 'selected' : ''; ?>>2025/2026</option>
-                            </select>
-                            <input type="text" name="name" id="name_input" required 
-                                   value="<?php echo htmlspecialchars($academicYear['name']); ?>"
-                                   class="flex-1 border rounded px-3 py-2"
-                                   pattern="\d{4}(/\d{4})?"
-                                   placeholder="e.g. 2026">
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">Single calendar year (e.g. 2026) or split year (e.g. 2026/2027)</p>
+                        <select name="name" required class="w-full border rounded px-3 py-2 bg-white">
+                            <?php
+                            $selectedName = $academicYear['name'] ?? date('Y');
+                            $yearsList = [];
+                            for ($y = date('Y') - 2; $y <= date('Y') + 5; $y++) {
+                                $yearsList[] = (string)$y;
+                                $yearsList[] = $y . '/' . ($y + 1);
+                            }
+                            if (!in_array($selectedName, $yearsList)) {
+                                array_unshift($yearsList, $selectedName);
+                            }
+                            foreach ($yearsList as $yOpt):
+                            ?>
+                                <option value="<?php echo htmlspecialchars($yOpt); ?>" <?php echo ($selectedName == $yOpt) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($yOpt); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     
                     <div class="grid grid-cols-2 gap-4">
