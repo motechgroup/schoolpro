@@ -156,10 +156,16 @@ class FeeController extends Controller {
                 $feeHeadBreakdown = []; // Continue with empty breakdown
             }
             
+            // Get multi-term fee breakdown and cumulative balance
+            $termSummary = $invoiceModel->getStudentTermBalances($studentId, $academicYear);
+            $cumulativeBalance = $invoiceModel->getCumulativeBalance($studentId, null, $academicYear);
+            
             $data = [
                 'student' => $student,
                 'invoice' => $currentInvoice,
                 'feeHeadBreakdown' => $feeHeadBreakdown,
+                'termSummary' => $termSummary,
+                'cumulativeBalance' => $cumulativeBalance,
                 'csrf_token' => generateCSRFToken()
             ];
             
@@ -223,83 +229,47 @@ class FeeController extends Controller {
             return;
         }
         
-        // Validate amount doesn't exceed remaining balance
-        if ($amount > $invoice['balance']) {
-            error_log("Payment amount exceeds balance - Amount: $amount, Invoice Balance: {$invoice['balance']}");
-            $this->json(['success' => false, 'message' => 'Amount exceeds invoice balance of ' . formatCurrency($invoice['balance'])]);
+        $academicYear = $_GET['academic_year'] ?? $invoice['academic_year'] ?? (date('Y') . '/' . (date('Y') + 1));
+        $cumulativeBalance = $invoiceModel->getCumulativeBalance($studentId, null, $academicYear);
+        
+        // Validate amount doesn't exceed total cumulative balance (or single invoice balance if cumulative is lower)
+        $maxAllowed = max($cumulativeBalance, floatval($invoice['balance']));
+        if ($cumulativeBalance > 0 && $amount > ($cumulativeBalance + 0.01)) {
+            error_log("Payment amount exceeds cumulative balance - Amount: $amount, Cumulative Balance: $cumulativeBalance");
+            $this->json(['success' => false, 'message' => 'Amount exceeds total cumulative balance of ' . formatCurrency($cumulativeBalance)]);
             return;
         }
         
-        // Create payment record
-        $paymentData = [
-            'invoice_id' => $invoiceId,
-            'student_id' => $studentId,
-            'payment_method' => $paymentMethod,
-            'amount' => $amount,
-            'payment_date' => date('Y-m-d'),
-            'receipt_number' => $paymentModel->generateReceiptNumber(),
-            'reference_number' => sanitize($_POST['reference_number'] ?? ''),
-            'received_by' => Auth::userId(),
-            'remarks' => sanitize($_POST['remarks'] ?? '')
-        ];
-        
-        // Handle M-Pesa if selected
-        if ($paymentMethod === 'mpesa' && !empty($_POST['phone_number'])) {
-            require_once APP_PATH . '/helpers/MpesaHelper.php';
-            
-            // Use student admission number as AccountReference so M-Pesa callback can match by admission
-            $studentModel = $this->model('Student');
-            $student = $studentModel->findById($studentId);
-            $accountReference = $student && !empty($student['admission_number'])
-                ? $student['admission_number']
-                : 'INV-' . $invoice['invoice_number']; // fallback
-
-            $phoneNumber = formatPhone(sanitize($_POST['phone_number']));
-            $result = MpesaHelper::initiateSTKPush(
-                $phoneNumber,
-                $amount,
-                $accountReference,
-                'School Fees Payment - ' . $invoice['invoice_number']
-            );
-            
-            if ($result['success']) {
-                $paymentData['mpesa_receipt'] = '';
-                $paymentData['mpesa_transaction_id'] = $result['checkout_request_id'];
-                $paymentData['remarks'] = 'M-Pesa payment pending confirmation';
-            } else {
-                $this->json(['success' => false, 'message' => $result['message'] ?? 'Failed to initiate M-Pesa payment']);
-                return;
-            }
-        }
-        
         try {
-            error_log("Creating payment - Invoice ID: $invoiceId, Student ID: $studentId, Amount: $amount, Method: $paymentMethod");
-            $paymentId = $paymentModel->create($paymentData);
+            error_log("Processing payment - Invoice ID: $invoiceId, Student ID: $studentId, Amount: $amount, Method: $paymentMethod");
             
-            if (!$paymentId) {
-                error_log("Payment creation failed for invoice ID: $invoiceId, amount: $amount");
+            $paymentMeta = [
+                'payment_method' => $paymentMethod,
+                'payment_date' => date('Y-m-d'),
+                'reference_number' => sanitize($_POST['reference_number'] ?? ''),
+                'mpesa_receipt' => sanitize($_POST['mpesa_receipt'] ?? ''),
+                'received_by' => Auth::userId(),
+                'remarks' => sanitize($_POST['remarks'] ?? ''),
+                'academic_year' => $academicYear
+            ];
+            
+            $allocResult = $invoiceModel->allocatePaymentAcrossInvoices($studentId, $amount, $paymentMeta);
+            
+            if (!$allocResult['success'] || empty($allocResult['allocated'])) {
+                error_log("Payment creation/allocation failed for student ID: $studentId, amount: $amount");
                 $this->json(['success' => false, 'message' => 'Failed to record payment. Please try again.']);
                 return;
             }
             
-            error_log("Payment created successfully - Payment ID: $paymentId, Amount: $amount");
-
-            // Handle M-Pesa receipt if provided (manual payment)
-            if ($paymentMethod === 'mpesa' && !empty($_POST['mpesa_receipt'])) {
-                $paymentModel->update($paymentId, [
-                    'mpesa_receipt' => sanitize($_POST['mpesa_receipt'])
-                ]);
-            }
-
-            // Update invoice balance
-            if (!$invoiceModel->updateBalance($invoiceId)) {
-                error_log("Failed to update invoice balance for invoice ID: $invoiceId");
-            }
+            $firstAlloc = $allocResult['allocated'][0];
+            $receiptNumber = $firstAlloc['receipt_number'] ?? '';
+            
+            error_log("Payment allocated successfully for student ID: $studentId, Amount: $amount");
 
             // Send SMS notification to parent about payment and fee status
             try {
                 require_once APP_PATH . '/helpers/PaymentNotificationHelper.php';
-                PaymentNotificationHelper::sendFeePaymentSms($studentId, $amount, $paymentData['receipt_number'], $invoiceId);
+                PaymentNotificationHelper::sendFeePaymentSms($studentId, $amount, $receiptNumber, $invoiceId);
             } catch (Exception $e) {
                 error_log("Payment SMS dispatch error (FeeController): " . $e->getMessage());
             }
@@ -307,7 +277,7 @@ class FeeController extends Controller {
             // Determine redirect based on referrer or default to reconcile
             $redirect = BASE_URL . '/students/show/' . $studentId;
             if (!empty($_GET['class_id'])) {
-                $redirect = BASE_URL . '/fees/reconcile?class_id=' . $_GET['class_id'] . '&term=' . ($_GET['term'] ?? 1) . '&academic_year=' . urlencode($_GET['academic_year'] ?? (date('Y') . '/' . (date('Y') + 1)));
+                $redirect = BASE_URL . '/fees/reconcile?class_id=' . $_GET['class_id'] . '&term=' . ($_GET['term'] ?? 1) . '&academic_year=' . urlencode($academicYear);
             }
             
             $this->json([

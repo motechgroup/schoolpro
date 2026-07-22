@@ -1,0 +1,54 @@
+RewriteEngine On
+
+# Auto-detect RewriteBase from installation path
+# For root installation, use: RewriteBase /
+# For subdirectory (like /masomo), use: RewriteBase /masomo/
+# Update this to match your installation path
+# If installed at root, change to: RewriteBase /
+RewriteBase /
+
+# Prevent directory listing
+Options -Indexes
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Protect sensitive files
+<FilesMatch "\.(env|ini|log|sql)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Exclude CMS paths - let CMS handle its own routing
+RewriteCond %{REQUEST_URI} ^/cms
+RewriteRule ^ - [L]
+
+# Clean URLs - Route all requests through index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
+
+# Prevent access to PHP files in app directory
+RewriteRule ^app/ - [F,L]
+
+# Prevent access to .env file
+<Files .env>
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Prevent access to install.php after installation (if .installed exists)
+<If "%{REQUEST_URI} =~ m#install\.php# && -f %{DOCUMENT_ROOT}/.installed">
+    Require all denied
+</If>
+
+# php -- BEGIN cPanel-generated handler, do not edit
+# Set the “ea-php83” package as the default “PHP” programming language.
+<IfModule mime_module>
+  AddHandler application/x-httpd-ea-php83 .php .php8 .phtml
+</IfModule>
+# php -- END cPanel-generated handler, do not edit

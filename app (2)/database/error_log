@@ -1,0 +1,12 @@
+[08-Jan-2026 12:52:58 UTC] PHP Warning:  syntax error, unexpected '(' in /home/xrsnxvnk/nesitarskyline.schoolpro.co.ke/.env on line 13
+ in /home/xrsnxvnk/nesitarskyline.schoolpro.co.ke/app/config/config.php on line 11
+[08-Jan-2026 12:52:58 UTC] PHP Warning:  foreach() argument must be of type array|object, false given in /home/xrsnxvnk/nesitarskyline.schoolpro.co.ke/app/config/config.php on line 12
+[08-Jan-2026 12:54:02 UTC] PHP Warning:  syntax error, unexpected '(' in /home/xrsnxvnk/nesitarskyline.schoolpro.co.ke/.env on line 13
+ in /home/xrsnxvnk/nesitarskyline.schoolpro.co.ke/app/config/config.php on line 11
+[08-Jan-2026 12:54:02 UTC] PHP Warning:  foreach() argument must be of type array|object, false given in /home/xrsnxvnk/nesitarskyline.schoolpro.co.ke/app/config/config.php on line 12
+[08-Jan-2026 13:03:25 UTC] PHP Warning:  syntax error, unexpected '(' in /home/xrsnxvnk/nesitarskyline.schoolpro.co.ke/.env on line 13
+ in /home/xrsnxvnk/nesitarskyline.schoolpro.co.ke/app/config/config.php on line 11
+[08-Jan-2026 13:03:25 UTC] PHP Warning:  foreach() argument must be of type array|object, false given in /home/xrsnxvnk/nesitarskyline.schoolpro.co.ke/app/config/config.php on line 12
+[08-Jan-2026 13:11:03 UTC] PHP Warning:  syntax error, unexpected '(' in /home/xrsnxvnk/nesitarskyline.schoolpro.co.ke/.env on line 13
+ in /home/xrsnxvnk/nesitarskyline.schoolpro.co.ke/app/config/config.php on line 11
+[08-Jan-2026 13:11:03 UTC] PHP Warning:  foreach() argument must be of type array|object, false given in /home/xrsnxvnk/nesitarskyline.schoolpro.co.ke/app/config/config.php on line 12

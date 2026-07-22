@@ -1,0 +1,44 @@
+# Environment files
+.env
+.installed
+
+# Uploads (user-generated content)
+public/uploads/*
+!public/uploads/.htaccess
+!public/uploads/index.php
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.bak
+*.backup
+*_backup.sql
+
+# Composer
+/vendor/
+composer.phar
+
+# Node modules (if any)
+node_modules/
+
+# Cache
+cache/
+*.cache
