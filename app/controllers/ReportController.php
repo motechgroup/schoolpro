@@ -25,9 +25,9 @@ class ReportController extends Controller {
         $db = Database::getInstance()->getConnection();
         
         // Student Stats
-        $totalStudents = $studentModel->count(['status' => 'active']);
-        $maleCount = $studentModel->count(['status' => 'active', 'gender' => 'male']);
-        $femaleCount = $studentModel->count(['status' => 'active', 'gender' => 'female']);
+        $totalStudents = $db->query("SELECT COUNT(*) FROM students WHERE status = 'active'")->fetchColumn();
+        $maleCount = $db->query("SELECT COUNT(*) FROM students WHERE status = 'active' AND gender = 'male'")->fetchColumn();
+        $femaleCount = $db->query("SELECT COUNT(*) FROM students WHERE status = 'active' AND gender = 'female'")->fetchColumn();
         
         // Fee Breakdown
         $feeBreakdown = $feeHeadPaymentModel->getTuitionVsOtherBreakdown(null, null, $academicYear);
@@ -37,7 +37,7 @@ class ReportController extends Controller {
         
         // Attendance today
         $today = date('Y-m-d');
-        $attendanceStmt = $db->prepare("SELECT status, COUNT(*) as cnt FROM attendance WHERE attendance_date = ? GROUP BY status");
+        $attendanceStmt = $db->prepare("SELECT status, COUNT(*) as cnt FROM student_attendance WHERE attendance_date = ? GROUP BY status");
         $attendanceStmt->execute([$today]);
         $attendanceData = $attendanceStmt->fetchAll(PDO::FETCH_KEY_PAIR);
         $totalAttendanceToday = array_sum($attendanceData);
