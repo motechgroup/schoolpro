@@ -60,7 +60,7 @@ class StudentController extends Controller {
         }
         
         // Get multi-term fee summary (with carried-forward balances)
-        $currentYear = date('Y') . '/' . (date('Y') + 1);
+        $currentYear = getAcademicYearName();
         $termSummary = $invoiceModel->getStudentTermBalances($id, $currentYear);
         $invoices = $termSummary['invoices'] ?? [];
         

@@ -21,10 +21,15 @@ class AcademicYear extends Model {
     public function getCurrent() {
         $today = date('Y-m-d');
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} 
-                                   WHERE start_date <= ? AND end_date >= ? 
-                                   AND status = 'active' 
-                                   ORDER BY start_date DESC LIMIT 1");
+                                   WHERE (start_date <= ? AND end_date >= ? AND status = 'active') 
+                                      OR is_current = 1 
+                                   ORDER BY is_current DESC, start_date DESC LIMIT 1");
         $stmt->execute([$today, $today]);
+        $row = $stmt->fetch();
+        if ($row) return $row;
+        
+        // Fallback to most recent academic year
+        $stmt = $this->db->query("SELECT * FROM {$this->table} ORDER BY start_date DESC LIMIT 1");
         return $stmt->fetch();
     }
     
@@ -56,11 +61,25 @@ class AcademicYear extends Model {
         $stmt = $this->db->prepare("SELECT t.*, ay.name as academic_year_name 
                                    FROM terms t
                                    JOIN academic_years ay ON t.academic_year_id = ay.id
-                                   WHERE t.start_date <= ? AND t.end_date >= ? 
-                                   AND t.status = 'active' 
-                                   ORDER BY t.start_date DESC LIMIT 1");
+                                   WHERE (t.start_date <= ? AND t.end_date >= ? AND t.status = 'active')
+                                      OR t.is_current = 1 
+                                   ORDER BY t.is_current DESC, t.start_date DESC LIMIT 1");
         $stmt->execute([$today, $today]);
-        return $stmt->fetch();
+        $row = $stmt->fetch();
+        if ($row) return $row;
+        
+        // Fallback to active academic year's first term
+        $currentYear = $this->getCurrent();
+        if ($currentYear) {
+            $stmt = $this->db->prepare("SELECT t.*, ay.name as academic_year_name 
+                                       FROM terms t
+                                       JOIN academic_years ay ON t.academic_year_id = ay.id
+                                       WHERE t.academic_year_id = ? 
+                                       ORDER BY t.term_number ASC LIMIT 1");
+            $stmt->execute([$currentYear['id']]);
+            return $stmt->fetch();
+        }
+        return null;
     }
     
     /**

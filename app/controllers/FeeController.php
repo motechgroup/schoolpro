@@ -122,8 +122,8 @@ class FeeController extends Controller {
                 return;
             }
             
-            $term = intval($_GET['term'] ?? 1);
-            $academicYear = $_GET['academic_year'] ?? date('Y') . '/' . (date('Y') + 1);
+            $term = !empty($_GET['term']) ? intval($_GET['term']) : getDefaultTermNumber();
+            $academicYear = getAcademicYearName($_GET['academic_year'] ?? null);
             
             // Get invoices for this term
             $invoices = $invoiceModel->getByStudent($studentId, $academicYear);

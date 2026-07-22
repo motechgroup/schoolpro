@@ -239,8 +239,8 @@ class StudentFeeController extends Controller {
         $invoiceModel = $this->model('Invoice');
         
         $classId = $_GET['class_id'] ?? null;
-        $term = $_GET['term'] ?? 1;
-        $academicYear = $_GET['academic_year'] ?? date('Y') . '/' . (date('Y') + 1);
+        $term = !empty($_GET['term']) ? intval($_GET['term']) : getDefaultTermNumber();
+        $academicYear = getAcademicYearName($_GET['academic_year'] ?? null);
         
         $classes = $classModel->getAllWithDetails($academicYear);
         $students = [];
