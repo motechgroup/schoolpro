@@ -102,7 +102,7 @@ class FeeHeadPayment extends Model {
                     fh.id as fee_head_id,
                     fh.name as fee_head_name,
                     fh.code as fee_head_code,
-                    COALESCE(SUM(DISTINCT sfh.amount), 0) as total_billed,
+                    COALESCE(SUM(sfh.amount), 0) as total_billed,
                     COALESCE(SUM(fhp.amount), 0) as total_collected
                 FROM fee_heads fh
                 LEFT JOIN student_fee_heads sfh ON fh.id = sfh.fee_head_id AND {$whereSql}
