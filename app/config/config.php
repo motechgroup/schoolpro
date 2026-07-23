@@ -18,8 +18,13 @@ if (file_exists($envFile)) {
             if (strpos($line, '=') !== false) {
                 list($key, $value) = explode('=', $line, 2);
                 $key = trim($key);
-                $value = trim(trim($value), '"\'');
-                if (!defined($key) && $value !== '') {
+                $value = trim($value);
+                // Strip surrounding quotes if present
+                if ((substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
+                    (substr($value, 0, 1) === "'" && substr($value, -1) === "'")) {
+                    $value = substr($value, 1, -1);
+                }
+                if (!defined($key)) {
                     define($key, $value);
                 }
             }
