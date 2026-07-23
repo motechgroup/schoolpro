@@ -23,11 +23,8 @@ class Database {
             
             $this->connection = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
-            if (ENVIRONMENT === 'development') {
-                die("Database Connection Error: " . $e->getMessage());
-            } else {
-                die("Database connection failed. Please contact administrator.");
-            }
+            error_log("Database Connection Error: " . $e->getMessage());
+            die("Database Connection Error: " . $e->getMessage());
         }
     }
     
