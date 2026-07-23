@@ -4,6 +4,17 @@
  * Kenyan Primary School Management System
  */
 
+// Auto-detect environment: if host contains localhost or 127.0.0.1, it's local development
+$isLocalhost = false;
+if (isset($_SERVER['HTTP_HOST'])) {
+    $hostLower = strtolower($_SERVER['HTTP_HOST']);
+    if ($hostLower === 'localhost' || $hostLower === '127.0.0.1' || strpos($hostLower, 'localhost:') === 0 || strpos($hostLower, '127.0.0.1:') === 0) {
+        $isLocalhost = true;
+    }
+} elseif (php_sapi_name() === 'cli' && (!defined('ENVIRONMENT') || ENVIRONMENT === 'development')) {
+    $isLocalhost = true;
+}
+
 // Load environment variables from .env file if it exists
 $possibleEnvPaths = array_filter([
     defined('BASE_PATH') ? BASE_PATH . '/.env' : null,
@@ -29,6 +40,14 @@ foreach ($possibleEnvPaths as $envFile) {
                     (substr($value, 0, 1) === "'" && substr($value, -1) === "'")) {
                     $value = substr($value, 1, -1);
                 }
+
+                // If on live server, ignore local placeholder values for DB in .env
+                if (!$isLocalhost) {
+                    if ($key === 'DB_USER' && $value === 'root') continue;
+                    if ($key === 'DB_NAME' && $value === 'masomo_school_db') continue;
+                    if ($key === 'DB_PASS' && empty($value)) continue;
+                }
+
                 if (!defined($key)) {
                     define($key, $value);
                 }
@@ -106,14 +125,6 @@ if (!defined('APP_NAME')) define('APP_NAME', 'SchoolPro V2.0.0');
 if (!defined('APP_VERSION')) define('APP_VERSION', '1.0.0');
 
 // Database Configuration (from .env or defaults)
-$isLocalhost = false;
-if (isset($_SERVER['HTTP_HOST'])) {
-    $hostLower = strtolower($_SERVER['HTTP_HOST']);
-    if ($hostLower === 'localhost' || $hostLower === '127.0.0.1' || strpos($hostLower, 'localhost:') === 0 || strpos($hostLower, '127.0.0.1:') === 0) {
-        $isLocalhost = true;
-    }
-}
-
 if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
 if (!defined('DB_NAME')) define('DB_NAME', $isLocalhost ? 'masomo_school_db' : 'xrsnxvnk_nesitarskyline');
 if (!defined('DB_USER')) define('DB_USER', $isLocalhost ? 'root' : 'xrsnxvnk_nesitarskyadmin');
