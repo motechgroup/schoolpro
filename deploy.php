@@ -97,7 +97,8 @@ $secretKey = $_GET['key'] ?? '';
                     unlink($tempZip);
 
                     // Copy extracted files to BASE_PATH
-                    $sourceDir = $extractPath . '/schoolpro-main';
+                    $extractedFolders = glob($extractPath . '/*', GLOB_ONLYDIR);
+                    $sourceDir = !empty($extractedFolders) ? $extractedFolders[0] : $extractPath . '/schoolpro-main';
                     if (is_dir($sourceDir)) {
                         $iterator = new RecursiveIteratorIterator(
                             new RecursiveDirectoryIterator($sourceDir, RecursiveDirectoryIterator::SKIP_DOTS),
