@@ -181,7 +181,7 @@ $secretKey = $_GET['key'] ?? '';
         <p style="font-size: 13px;">Direct Links:</p>
         <ul style="font-size: 13px; color: #64748b;">
             <li>Run Database Migration manually: <a href="database/run_migration.php" target="_blank">database/run_migration.php</a></li>
-            <li>Run Fee Head Seeder manually: <a href="database/seed_fee_head_billing.php" target="_blank">database/seed_fee_head_billing.php</a></li>
+            <li>Run Real Payment Allocator manually: <a href="database/allocate_payments.php" target="_blank">database/allocate_payments.php</a></li>
         </ul>
     </div>
 </div>
