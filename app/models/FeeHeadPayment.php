@@ -163,6 +163,73 @@ class FeeHeadPayment extends Model {
                 $otherCollected += $item['total_collected'];
             }
         }
+
+        // Fallback: If student_fee_heads is empty or not in use, aggregate directly from invoices & payments tables
+        if (($tuitionBilled + $otherBilled == 0) && ($tuitionCollected + $otherCollected == 0)) {
+            $invWhere = "1=1";
+            $invParams = [];
+            if (!empty($academicYear)) {
+                $invWhere .= " AND academic_year = ?";
+                $invParams[] = $academicYear;
+            }
+
+            $invStmt = $this->db->prepare("SELECT COALESCE(SUM(total_amount), 0) as total_billed, 
+                                                 COALESCE(SUM(paid_amount), 0) as total_paid, 
+                                                 COALESCE(SUM(balance), 0) as total_balance 
+                                          FROM invoices WHERE {$invWhere}");
+            $invStmt->execute($invParams);
+            $invRow = $invStmt->fetch(PDO::FETCH_ASSOC);
+
+            $invBilled = floatval($invRow['total_billed'] ?? 0);
+            $invPaid = floatval($invRow['total_paid'] ?? 0);
+
+            // Also sum actual payments table
+            $payWhere = "1=1";
+            $payParams = [];
+            if (!empty($startDate) && !empty($endDate)) {
+                $payWhere .= " AND payment_date BETWEEN ? AND ?";
+                $payParams[] = $startDate;
+                $payParams[] = $endDate;
+            }
+            $payStmt = $this->db->prepare("SELECT COALESCE(SUM(amount), 0) as total_collected FROM payments WHERE {$payWhere}");
+            $payStmt->execute($payParams);
+            $actualCollected = floatval($payStmt->fetchColumn());
+
+            $effectiveCollected = max($invPaid, $actualCollected);
+
+            if ($invBilled > 0 || $effectiveCollected > 0) {
+                // Check if invoice_items table has data
+                $tuitionItemBilled = 0;
+                $otherItemBilled = 0;
+                try {
+                    $allItemRows = $this->db->query("SELECT description, SUM(amount) as sum_amt FROM invoice_items GROUP BY description")->fetchAll(PDO::FETCH_ASSOC);
+                    foreach ($allItemRows as $ir) {
+                        $desc = strtolower($ir['description'] ?? '');
+                        $amt = floatval($ir['sum_amt'] ?? 0);
+                        if (strpos($desc, 'tuition') !== false) {
+                            $tuitionItemBilled += $amt;
+                        } else {
+                            $otherItemBilled += $amt;
+                        }
+                    }
+                } catch (Exception $e) {
+                    $tuitionItemBilled = 0;
+                    $otherItemBilled = 0;
+                }
+
+                $totItem = $tuitionItemBilled + $otherItemBilled;
+                if ($totItem > 0) {
+                    $tRatio = $tuitionItemBilled / $totItem;
+                } else {
+                    $tRatio = 0.85; // 85% Tuition default split
+                }
+
+                $tuitionBilled = $invBilled * $tRatio;
+                $otherBilled = $invBilled * (1 - $tRatio);
+                $tuitionCollected = $effectiveCollected * $tRatio;
+                $otherCollected = $effectiveCollected * (1 - $tRatio);
+            }
+        }
         
         return [
             'tuition' => [
