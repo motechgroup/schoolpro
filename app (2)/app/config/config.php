@@ -4,15 +4,56 @@
  * Kenyan Primary School Management System
  */
 
+// Auto-detect environment: if host contains localhost or 127.0.0.1, it's local development
+$isLocalhost = false;
+if (isset($_SERVER['HTTP_HOST'])) {
+    $hostLower = strtolower($_SERVER['HTTP_HOST']);
+    if ($hostLower === 'localhost' || $hostLower === '127.0.0.1' || strpos($hostLower, 'localhost:') === 0 || strpos($hostLower, '127.0.0.1:') === 0) {
+        $isLocalhost = true;
+    }
+} elseif (php_sapi_name() === 'cli' && (!defined('ENVIRONMENT') || ENVIRONMENT === 'development')) {
+    $isLocalhost = true;
+}
+
 // Load environment variables from .env file if it exists
-// BASE_PATH is defined in index.php before this config is loaded
-$envFile = (defined('BASE_PATH') ? BASE_PATH : __DIR__ . '/../..') . '/.env';
-if (file_exists($envFile)) {
-    $envVars = parse_ini_file($envFile);
-    foreach ($envVars as $key => $value) {
-        if (!defined($key) && !empty($value)) {
-            define($key, $value);
+$possibleEnvPaths = array_filter([
+    defined('BASE_PATH') ? BASE_PATH . '/.env' : null,
+    __DIR__ . '/../../.env',
+    dirname(__DIR__, 2) . '/.env',
+    isset($_SERVER['DOCUMENT_ROOT']) ? $_SERVER['DOCUMENT_ROOT'] . '/.env' : null,
+]);
+
+foreach ($possibleEnvPaths as $envFile) {
+    if (file_exists($envFile) && is_readable($envFile)) {
+        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines !== false) {
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line) || $line[0] === '#' || strpos($line, '=') === false) {
+                    continue;
+                }
+                list($key, $value) = explode('=', $line, 2);
+                $key = trim($key);
+                $value = trim($value);
+                // Strip surrounding quotes if present
+                if ((substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
+                    (substr($value, 0, 1) === "'" && substr($value, -1) === "'")) {
+                    $value = substr($value, 1, -1);
+                }
+
+                // If on live server, ignore local placeholder values for DB in .env
+                if (!$isLocalhost) {
+                    if ($key === 'DB_USER' && $value === 'root') continue;
+                    if ($key === 'DB_NAME' && $value === 'masomo_school_db') continue;
+                    if ($key === 'DB_PASS' && empty($value)) continue;
+                }
+
+                if (!defined($key)) {
+                    define($key, $value);
+                }
+            }
         }
+        break;
     }
 }
 
@@ -26,7 +67,9 @@ if (isset($_SERVER['HTTP_HOST'])) {
     }
 }
 
-define('ENVIRONMENT', defined('ENVIRONMENT') ? ENVIRONMENT : $detectedEnv);
+if (!defined('ENVIRONMENT')) {
+    define('ENVIRONMENT', $detectedEnv);
+}
 
 // Base URL - Auto-detect from request or use .env setting
 // If BASE_URL is set in .env, use it, otherwise auto-detect
@@ -78,15 +121,15 @@ if (ENVIRONMENT === 'development' && isset($host) && isset($path) && isset($prot
 }
 
 // Application settings (from .env or defaults)
-define('APP_NAME', defined('APP_NAME') ? APP_NAME : 'SchoolPro V2.0.0');
-define('APP_VERSION', defined('APP_VERSION') ? APP_VERSION : '1.0.0');
+if (!defined('APP_NAME')) define('APP_NAME', 'SchoolPro V2.0.0');
+if (!defined('APP_VERSION')) define('APP_VERSION', '1.0.0');
 
 // Database Configuration (from .env or defaults)
-define('DB_HOST', defined('DB_HOST') ? DB_HOST : 'localhost');
-define('DB_NAME', defined('DB_NAME') ? DB_NAME : 'xrsnxvnk_nesitarskyline');
-define('DB_USER', defined('DB_USER') ? DB_USER : 'xrsnxvnk_nesitarskyadmin');
-define('DB_PASS', defined('DB_PASS') ? DB_PASS : 'KDL$Cg{{vyFE]$QW');
-define('DB_CHARSET', defined('DB_CHARSET') ? DB_CHARSET : 'utf8mb4');
+if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
+if (!defined('DB_NAME')) define('DB_NAME', $isLocalhost ? 'masomo_school_db' : 'xrsnxvnk_nesitarskyline');
+if (!defined('DB_USER')) define('DB_USER', $isLocalhost ? 'root' : 'xrsnxvnk_nesitarskyadmin');
+if (!defined('DB_PASS')) define('DB_PASS', $isLocalhost ? '' : 'KDL$Cg{{vyFE]$QW');
+if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
 
 // Session Configuration
 define('SESSION_LIFETIME', 3600); // 1 hour
@@ -132,4 +175,3 @@ if (ENVIRONMENT === 'development') {
 
 // Timezone
 date_default_timezone_set('Africa/Nairobi');
-
