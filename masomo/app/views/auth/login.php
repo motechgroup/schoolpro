@@ -119,16 +119,6 @@
                 <!-- Error Message -->
                 <div id="errorMessage" class="hidden bg-red-500/20 backdrop-blur-sm border border-red-400/50 text-red-100 px-4 py-3 rounded-xl text-sm"></div>
             </form>
-            
-            <!-- Default Credentials -->
-            <div class="mt-6 text-center">
-                <div class="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg">
-                    <i class="fas fa-info-circle text-white/70 mr-2"></i>
-                    <p class="text-xs text-white/80">
-                        <span class="font-medium">Default:</span> admin@school.co.ke / admin123
-                    </p>
-                </div>
-            </div>
         </div>
         
         <!-- Footer -->
