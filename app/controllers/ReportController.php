@@ -20,7 +20,10 @@ class ReportController extends Controller {
     public function index() {
         $studentModel = $this->model('Student');
         $feeHeadPaymentModel = $this->model('FeeHeadPayment');
-        $academicYear = getAcademicYearName();
+        $academicYearModel = $this->model('AcademicYear');
+        
+        $selectedYear = $_GET['academic_year'] ?? null;
+        $academicYears = $academicYearModel->getAll();
         
         $db = Database::getInstance()->getConnection();
         
@@ -30,7 +33,7 @@ class ReportController extends Controller {
         $femaleCount = $db->query("SELECT COUNT(*) FROM students WHERE status = 'active' AND gender = 'female'")->fetchColumn();
         
         // Fee Breakdown
-        $feeBreakdown = $feeHeadPaymentModel->getTuitionVsOtherBreakdown(null, null, $academicYear);
+        $feeBreakdown = $feeHeadPaymentModel->getTuitionVsOtherBreakdown(null, null, $selectedYear);
         
         // Classes count
         $classCount = $db->query("SELECT COUNT(*) FROM classes WHERE status = 'active'")->fetchColumn();
@@ -52,7 +55,9 @@ class ReportController extends Controller {
             'classCount' => $classCount,
             'feeBreakdown' => $feeBreakdown,
             'attendanceRate' => $attendanceRate,
-            'presentToday' => $presentToday
+            'presentToday' => $presentToday,
+            'academicYears' => $academicYears ?? [],
+            'selectedYear' => $selectedYear
         ];
         
         $this->view('reports/index', $data);

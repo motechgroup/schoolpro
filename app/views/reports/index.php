@@ -4,9 +4,18 @@
             <h1 class="text-3xl font-bold text-gray-800">Reports & Executive Analytics</h1>
             <p class="text-gray-500 text-sm mt-1">Real-time school performance metrics, fee collection summaries, and student statistics</p>
         </div>
-        <div class="bg-blue-50 text-blue-800 px-4 py-2 rounded-lg border border-blue-200 text-sm font-semibold flex items-center">
-            <i class="fas fa-calendar-alt mr-2"></i>Academic Year: <?php echo htmlspecialchars(getAcademicYearName()); ?>
-        </div>
+        <form method="GET" action="<?php echo BASE_URL; ?>/reports" class="flex items-center">
+            <select name="academic_year" onchange="this.form.submit()" class="bg-blue-50 text-blue-800 px-3 py-2 rounded-lg border border-blue-200 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                <option value="">All Academic Years</option>
+                <?php if (!empty($academicYears)): ?>
+                    <?php foreach ($academicYears as $ay): ?>
+                        <option value="<?php echo htmlspecialchars($ay['name']); ?>" <?php echo ($selectedYear === $ay['name']) ? 'selected' : ''; ?>>
+                            Academic Year: <?php echo htmlspecialchars($ay['name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </select>
+        </form>
     </div>
     
     <!-- Report Navigation Header Cards -->
