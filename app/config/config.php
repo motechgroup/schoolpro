@@ -5,17 +5,22 @@
  */
 
 // Load environment variables from .env file if it exists
-// BASE_PATH is defined in index.php before this config is loaded
-$envFile = (defined('BASE_PATH') ? BASE_PATH : __DIR__ . '/../..') . '/.env';
-if (file_exists($envFile)) {
-    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    if ($lines !== false) {
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (empty($line) || $line[0] === '#') {
-                continue;
-            }
-            if (strpos($line, '=') !== false) {
+$possibleEnvPaths = array_filter([
+    defined('BASE_PATH') ? BASE_PATH . '/.env' : null,
+    __DIR__ . '/../../.env',
+    dirname(__DIR__, 2) . '/.env',
+    isset($_SERVER['DOCUMENT_ROOT']) ? $_SERVER['DOCUMENT_ROOT'] . '/.env' : null,
+]);
+
+foreach ($possibleEnvPaths as $envFile) {
+    if (file_exists($envFile) && is_readable($envFile)) {
+        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines !== false) {
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line) || $line[0] === '#' || strpos($line, '=') === false) {
+                    continue;
+                }
                 list($key, $value) = explode('=', $line, 2);
                 $key = trim($key);
                 $value = trim($value);
@@ -29,6 +34,7 @@ if (file_exists($envFile)) {
                 }
             }
         }
+        break;
     }
 }
 
@@ -100,10 +106,12 @@ if (!defined('APP_NAME')) define('APP_NAME', 'SchoolPro V2.0.0');
 if (!defined('APP_VERSION')) define('APP_VERSION', '1.0.0');
 
 // Database Configuration (from .env or defaults)
+$isProductionHost = isset($_SERVER['HTTP_HOST']) && (strpos($_SERVER['HTTP_HOST'], 'nesitarskyline') !== false || strpos($_SERVER['HTTP_HOST'], 'schoolpro.co.ke') !== false);
+
 if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
-if (!defined('DB_NAME')) define('DB_NAME', 'masomo_school_db');
-if (!defined('DB_USER')) define('DB_USER', 'root');
-if (!defined('DB_PASS')) define('DB_PASS', '');
+if (!defined('DB_NAME')) define('DB_NAME', $isProductionHost ? 'xrsnxvnk_nesitarskyline' : 'masomo_school_db');
+if (!defined('DB_USER')) define('DB_USER', $isProductionHost ? 'xrsnxvnk_nesitarskyadmin' : 'root');
+if (!defined('DB_PASS')) define('DB_PASS', $isProductionHost ? 'KDL$Cg{{vyFE]$QW' : '');
 if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
 
 // Session Configuration
