@@ -50,17 +50,17 @@ $secretKey = $_GET['key'] ?? '';
     </div>
 
     <?php if ($action === 'git_pull'): ?>
-        <h2>Execution Result: Git Pull</h2>
+        <h2>Execution Result: Git Reset & Pull</h2>
         <div class="console"><?php
             if (function_exists('exec')) {
                 $output = [];
                 $returnCode = 0;
-                exec('git pull origin main 2>&1', $output, $returnCode);
+                exec('git checkout -- . 2>&1 && git clean -fd 2>&1 && git pull origin main 2>&1', $output, $returnCode);
                 echo implode("\n", $output);
                 if ($returnCode === 0) {
                     echo "\n\n✓ Code updated successfully via Git!";
                 } else {
-                    echo "\n\n⚠ Git pull exited with code $returnCode. If shell access is blocked by hosting, try 'Update via GitHub Zip'.";
+                    echo "\n\n⚠ Git pull exited with code $returnCode. Try 'Update via GitHub Zip'.";
                 }
             } else {
                 echo "exec() function is disabled by hosting provider. Please click 'Update via GitHub Zip'.";
