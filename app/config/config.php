@@ -106,12 +106,18 @@ if (!defined('APP_NAME')) define('APP_NAME', 'SchoolPro V2.0.0');
 if (!defined('APP_VERSION')) define('APP_VERSION', '1.0.0');
 
 // Database Configuration (from .env or defaults)
-$isProductionHost = isset($_SERVER['HTTP_HOST']) && (strpos($_SERVER['HTTP_HOST'], 'nesitarskyline') !== false || strpos($_SERVER['HTTP_HOST'], 'schoolpro.co.ke') !== false);
+$isLocalhost = false;
+if (isset($_SERVER['HTTP_HOST'])) {
+    $hostLower = strtolower($_SERVER['HTTP_HOST']);
+    if ($hostLower === 'localhost' || $hostLower === '127.0.0.1' || strpos($hostLower, 'localhost:') === 0 || strpos($hostLower, '127.0.0.1:') === 0) {
+        $isLocalhost = true;
+    }
+}
 
 if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
-if (!defined('DB_NAME')) define('DB_NAME', $isProductionHost ? 'xrsnxvnk_nesitarskyline' : 'masomo_school_db');
-if (!defined('DB_USER')) define('DB_USER', $isProductionHost ? 'xrsnxvnk_nesitarskyadmin' : 'root');
-if (!defined('DB_PASS')) define('DB_PASS', $isProductionHost ? 'KDL$Cg{{vyFE]$QW' : '');
+if (!defined('DB_NAME')) define('DB_NAME', $isLocalhost ? 'masomo_school_db' : 'xrsnxvnk_nesitarskyline');
+if (!defined('DB_USER')) define('DB_USER', $isLocalhost ? 'root' : 'xrsnxvnk_nesitarskyadmin');
+if (!defined('DB_PASS')) define('DB_PASS', $isLocalhost ? '' : 'KDL$Cg{{vyFE]$QW');
 if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
 
 // Session Configuration
