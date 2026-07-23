@@ -1,12 +1,5 @@
 RewriteEngine On
 
-# Auto-detect RewriteBase from installation path
-# For root installation, use: RewriteBase /
-# For subdirectory (like /masomo), use: RewriteBase /masomo/
-# Update this to match your installation path
-# If installed at root, change to: RewriteBase /
-RewriteBase /masomo/
-
 # Prevent directory listing
 Options -Indexes
 
@@ -40,11 +33,6 @@ RewriteRule ^app/ - [F,L]
     Order allow,deny
     Deny from all
 </Files>
-
-# Prevent access to install.php after installation (if .installed exists)
-<If "%{REQUEST_URI} =~ m#install\.php# && -f %{DOCUMENT_ROOT}/.installed">
-    Require all denied
-</If>
 
 # php -- BEGIN cPanel-generated handler, do not edit
 # Set the “ea-php83” package as the default “PHP” programming language.
