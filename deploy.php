@@ -46,7 +46,7 @@ $secretKey = $_GET['key'] ?? '';
         <a href="?action=git_pull" class="btn">1. Update Code (Git Pull)</a>
         <a href="?action=zip_update" class="btn btn-purple">1b. Update via GitHub Zip</a>
         <a href="?action=run_migration" class="btn btn-green">2. Run DB Migration</a>
-        <a href="?action=run_seeder" class="btn btn-green">3. Run Fee Seeder</a>
+        <a href="?action=allocate_payments" class="btn btn-green">3. Allocate Real Payments</a>
     </div>
 
     <?php if ($action === 'git_pull'): ?>
@@ -149,6 +149,15 @@ $secretKey = $_GET['key'] ?? '';
             define('MIGRATION_RUNNER', true);
             ob_start();
             include BASE_PATH . '/database/run_migration.php';
+            $res = ob_get_clean();
+            echo strip_tags($res);
+        ?></div>
+
+    <?php elseif ($action === 'allocate_payments'): ?>
+        <h2>Execution Result: Real Payment Allocation</h2>
+        <div class="console"><?php
+            ob_start();
+            include BASE_PATH . '/database/allocate_payments.php';
             $res = ob_get_clean();
             echo strip_tags($res);
         ?></div>
