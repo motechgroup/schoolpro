@@ -114,7 +114,16 @@ $secretKey = $_GET['key'] ?? '';
                             } else {
                                 // Don't overwrite .env
                                 if (basename($targetPath) === '.env') continue;
-                                copy($item->getPathname(), $targetPath);
+                                
+                                if (file_exists($targetPath)) {
+                                    @chmod($targetPath, 0666);
+                                    @unlink($targetPath);
+                                }
+
+                                $copied = @copy($item->getPathname(), $targetPath);
+                                if (!$copied) {
+                                    @file_put_contents($targetPath, file_get_contents($item->getPathname()));
+                                }
                                 $count++;
                             }
                         }
