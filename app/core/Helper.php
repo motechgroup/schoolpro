@@ -400,10 +400,10 @@ function isSchoolOpen() {
  * Get academic year name (formatted)
  */
 function getAcademicYearName($academicYear = null) {
-    if ($academicYear === null) {
+    if (empty($academicYear) || $academicYear === 'null') {
         $current = getCurrentAcademicYear();
         return $current ? $current['name'] : date('Y') . '/' . (date('Y') + 1);
     }
-    return $academicYear;
+    return trim($academicYear);
 }
 

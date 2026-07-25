@@ -129,10 +129,13 @@ class FeeController extends Controller {
             $term = !empty($_GET['term']) ? intval($_GET['term']) : getDefaultTermNumber();
             $academicYear = getAcademicYearName($_GET['academic_year'] ?? null);
             
-            // Get invoices for this term
+            // Get invoices for this student
             $invoices = $invoiceModel->getByStudent($studentId, $academicYear);
-            $currentInvoice = null;
+            if (empty($invoices)) {
+                $invoices = $invoiceModel->getByStudent($studentId, null);
+            }
             
+            $currentInvoice = null;
             foreach ($invoices as $inv) {
                 if ($inv['term'] == $term) {
                     $currentInvoice = $inv;
@@ -140,8 +143,17 @@ class FeeController extends Controller {
                 }
             }
             
+            // Fallback to first available invoice if term specific invoice not found
+            if (!$currentInvoice && !empty($invoices)) {
+                $currentInvoice = reset($invoices);
+            }
+            
             if (!$currentInvoice) {
-                echo '<div class="text-red-600 p-4">No invoice found for this term. Please assign fee heads first.</div>';
+                echo '<div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded text-yellow-800">';
+                echo '<p class="font-bold mb-1"><i class="fas fa-exclamation-circle mr-2"></i>No invoice found for this student</p>';
+                echo '<p class="text-sm mb-3">Please assign fee heads first to generate student invoices.</p>';
+                echo '<a href="' . BASE_URL . '/studentfees/assign/' . $studentId . '" class="inline-block bg-purple-600 text-white text-xs px-3 py-2 rounded hover:bg-purple-700 font-medium"><i class="fas fa-plus mr-1"></i>Assign Fee Heads</a>';
+                echo '</div>';
                 return;
             }
             

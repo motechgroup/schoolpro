@@ -116,7 +116,18 @@ class Invoice extends Model {
      * @return array Contains 'invoices', 'total_billed', 'total_paid', 'net_balance'
      */
     public function getStudentTermBalances($studentId, $academicYear = null) {
+        if ($academicYear === 'all') {
+            $academicYear = null;
+        }
         $invoices = $this->getByStudent($studentId, $academicYear);
+        
+        // Fallback: If no invoices found for the specified academic year, check if student has invoices in any year
+        if (empty($invoices) && $academicYear !== null) {
+            $allInvoices = $this->getByStudent($studentId, null);
+            if (!empty($allInvoices)) {
+                $invoices = $allInvoices;
+            }
+        }
         
         // Ensure balances are updated for all invoices
         foreach ($invoices as &$inv) {
@@ -124,7 +135,14 @@ class Invoice extends Model {
         }
         
         // Re-fetch with fresh balances
-        $invoices = $this->getByStudent($studentId, $academicYear);
+        if (empty($invoices) || $academicYear === null) {
+            $invoices = $this->getByStudent($studentId, null);
+        } else {
+            $invoices = $this->getByStudent($studentId, $academicYear);
+            if (empty($invoices)) {
+                $invoices = $this->getByStudent($studentId, null);
+            }
+        }
         
         $runningArrears = 0.00;
         $totalBilled = 0.00;

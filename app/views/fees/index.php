@@ -2,11 +2,11 @@
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold">Fee Management</h1>
         <div class="flex space-x-2">
+            <a href="<?php echo BASE_URL; ?>/fees/reconcile" class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 font-semibold shadow-sm transition">
+                <i class="fas fa-money-bill-wave mr-2"></i>Collect Fee / Reconcile
+            </a>
             <a href="<?php echo BASE_URL; ?>/feeheads" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
                 <i class="fas fa-list mr-2"></i>Fee Heads
-            </a>
-            <a href="<?php echo BASE_URL; ?>/fees/reconcile" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                <i class="fas fa-money-check-alt mr-2"></i>Reconcile Payments
             </a>
             <a href="<?php echo BASE_URL; ?>/reports/financial" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
                 <i class="fas fa-chart-bar mr-2"></i>Financial Report
@@ -89,6 +89,7 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
@@ -110,6 +111,12 @@
                         ?>">
                             <?php echo ucfirst($invoice['status']); ?>
                         </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
+                        <a href="<?php echo BASE_URL; ?>/students/show/<?php echo $invoice['student_id']; ?>" 
+                           class="bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 text-xs font-medium inline-flex items-center">
+                            <i class="fas fa-money-bill-wave mr-1"></i>Collect / View
+                        </a>
                     </td>
                 </tr>
                 <?php endforeach; ?>

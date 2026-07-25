@@ -60,16 +60,22 @@ class StudentController extends Controller {
         }
         
         // Get multi-term fee summary (with carried-forward balances)
-        $currentYear = getAcademicYearName();
-        $termSummary = $invoiceModel->getStudentTermBalances($id, $currentYear);
+        $selectedYear = $_GET['academic_year'] ?? getAcademicYearName();
+        $termSummary = $invoiceModel->getStudentTermBalances($id, $selectedYear);
         $invoices = $termSummary['invoices'] ?? [];
+        
+        // Fetch list of all academic years for filtering dropdown
+        $db = Database::getInstance()->getConnection();
+        $academicYearsList = $db->query("SELECT name FROM academic_years ORDER BY start_date DESC")->fetchAll(PDO::FETCH_COLUMN);
+        if (empty($academicYearsList)) {
+            $academicYearsList = [getAcademicYearName()];
+        }
         
         // Get attendance records - last 30 days
         $startDate = date('Y-m-d', strtotime('-30 days'));
         $endDate = date('Y-m-d');
         $attendanceRecords = [];
         
-        $db = Database::getInstance()->getConnection();
         $stmt = $db->prepare("SELECT * FROM student_attendance 
                                WHERE student_id = ? AND attendance_date BETWEEN ? AND ? 
                                ORDER BY attendance_date DESC");
@@ -86,6 +92,8 @@ class StudentController extends Controller {
             'student' => $student,
             'invoices' => $invoices,
             'termSummary' => $termSummary,
+            'selectedYear' => $selectedYear,
+            'academicYearsList' => $academicYearsList,
             'attendanceRecords' => $attendanceRecords,
             'attendanceSummary' => $attendanceSummary
         ];

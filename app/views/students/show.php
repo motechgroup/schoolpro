@@ -8,8 +8,11 @@
             </a>
             <?php endif; ?>
             <?php if (Auth::hasAnyRole(['super_admin', 'school_admin', 'bursar', 'accountant'])): ?>
+            <button onclick="showPaymentForm(<?php echo $student['id']; ?>, 1, '<?php echo htmlspecialchars($selectedYear ?? getAcademicYearName()); ?>'); return false;" class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 font-semibold shadow-sm transition">
+                <i class="fas fa-money-bill-wave mr-2"></i>Collect Fee
+            </button>
             <a href="<?php echo BASE_URL; ?>/studentfees/assign/<?php echo $student['id']; ?>" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
-                <i class="fas fa-money-bill-wave mr-2"></i>Assign Fees
+                <i class="fas fa-cog mr-2"></i>Assign Fees
             </a>
             <?php endif; ?>
             <?php if (!Auth::hasAnyRole(['teacher'])): ?>
@@ -251,9 +254,25 @@
     <div class="bg-white rounded-lg shadow p-6 mt-6">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-2xl font-bold">Fee Information</h2>
-            <div class="flex space-x-2">
+            <div class="flex items-center space-x-3">
+                <form method="GET" action="<?php echo BASE_URL; ?>/students/show/<?php echo $student['id']; ?>" class="flex items-center space-x-2">
+                    <label for="ay_select" class="text-xs font-semibold text-gray-500 uppercase">Year:</label>
+                    <select id="ay_select" name="academic_year" onchange="this.form.submit()" class="border border-gray-300 rounded px-2.5 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <?php foreach (($academicYearsList ?? [getAcademicYearName()]) as $ayName): ?>
+                        <option value="<?php echo htmlspecialchars($ayName); ?>" <?php echo ($selectedYear ?? getAcademicYearName()) == $ayName ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($ayName); ?>
+                        </option>
+                        <?php endforeach; ?>
+                        <option value="all" <?php echo ($selectedYear ?? '') == 'all' ? 'selected' : ''; ?>>All Years</option>
+                    </select>
+                </form>
+                <?php if (Auth::hasAnyRole(['super_admin', 'school_admin', 'bursar', 'accountant'])): ?>
+                <button onclick="showPaymentForm(<?php echo $student['id']; ?>, 1, '<?php echo htmlspecialchars($selectedYear ?? getAcademicYearName()); ?>'); return false;" class="bg-emerald-600 text-white px-3 py-1.5 rounded hover:bg-emerald-700 text-xs font-semibold shadow-sm transition flex items-center">
+                    <i class="fas fa-money-bill-wave mr-1.5"></i>Collect Fee
+                </button>
+                <?php endif; ?>
                 <a href="<?php echo BASE_URL; ?>/feereport/student/<?php echo $student['id']; ?>" class="text-purple-600 hover:text-purple-800 text-sm">
-                    <i class="fas fa-file-alt mr-1"></i>Fee Report
+                    <i class="fas fa-file-alt mr-1"></i>Report
                 </a>
                 <?php if (Auth::hasAnyRole(['super_admin', 'school_admin', 'bursar', 'accountant'])): ?>
                 <a href="<?php echo BASE_URL; ?>/studentfees/assign/<?php echo $student['id']; ?>" class="text-blue-600 hover:text-blue-800 text-sm">
@@ -304,7 +323,7 @@
                         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Paid</th>
                         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Net Balance</th>
                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <?php if (Auth::hasAnyRole(['super_admin', 'school_admin', 'bursar'])): ?>
+                        <?php if (Auth::hasAnyRole(['super_admin', 'school_admin', 'bursar', 'accountant'])): ?>
                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
                         <?php endif; ?>
                     </tr>
@@ -350,7 +369,7 @@
                                 <?php echo ucfirst($invoice['status']); ?>
                             </span>
                         </td>
-                        <?php if (Auth::hasAnyRole(['super_admin', 'school_admin', 'bursar']) && ($netTermBalance > 0 || ($termSummary['net_balance'] ?? 0) > 0)): ?>
+                        <?php if (Auth::hasAnyRole(['super_admin', 'school_admin', 'bursar', 'accountant']) && ($netTermBalance > 0 || ($termSummary['net_balance'] ?? 0) > 0)): ?>
                         <td class="px-4 py-4 whitespace-nowrap text-center text-sm font-medium">
                             <a href="#" onclick="showPaymentForm(<?php echo $student['id']; ?>, <?php echo $invoice['term']; ?>, '<?php echo htmlspecialchars($invoice['academic_year']); ?>'); return false;" 
                                class="bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 text-xs">
