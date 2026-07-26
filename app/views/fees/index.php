@@ -1,14 +1,17 @@
 <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold">Fee Management</h1>
-        <div class="flex space-x-2">
+        <div class="flex flex-wrap gap-2">
+            <a href="<?php echo BASE_URL; ?>/feereport/terms" class="bg-purple-700 text-white px-4 py-2 rounded hover:bg-purple-800 font-semibold shadow-sm transition">
+                <i class="fas fa-file-invoice-dollar mr-2"></i>Term Fee Summary
+            </a>
             <a href="<?php echo BASE_URL; ?>/fees/reconcile" class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 font-semibold shadow-sm transition">
                 <i class="fas fa-money-bill-wave mr-2"></i>Collect Fee / Reconcile
             </a>
             <a href="<?php echo BASE_URL; ?>/feeheads" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
                 <i class="fas fa-list mr-2"></i>Fee Heads
             </a>
-            <a href="<?php echo BASE_URL; ?>/reports/financial" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+            <a href="<?php echo BASE_URL; ?>/reports/financial" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
                 <i class="fas fa-chart-bar mr-2"></i>Financial Report
             </a>
         </div>

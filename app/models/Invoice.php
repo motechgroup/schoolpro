@@ -326,5 +326,292 @@ class Invoice extends Model {
             'allocated' => $allocatedPayments
         ];
     }
+
+    /**
+     * Get overall term summary metrics (Term 1, Term 2, Term 3, and Total)
+     *
+     * @param string|null $academicYear
+     * @param int|null $classId
+     * @return array
+     */
+    public function getTermSummaryMetrics($academicYear = null, $classId = null) {
+        $whereClause = "1=1";
+        $params = [];
+
+        if (!empty($academicYear)) {
+            $whereClause .= " AND i.academic_year = ?";
+            $params[] = $academicYear;
+        }
+
+        if (!empty($classId)) {
+            $whereClause .= " AND s.class_id = ?";
+            $params[] = $classId;
+        }
+
+        $sql = "SELECT 
+                    i.term,
+                    COUNT(i.id) as invoice_count,
+                    COALESCE(SUM(i.total_amount), 0) as total_billed,
+                    COALESCE(SUM(i.paid_amount), 0) as total_paid,
+                    COALESCE(SUM(i.balance), 0) as total_balance
+                FROM invoices i
+                JOIN students s ON i.student_id = s.id
+                WHERE {$whereClause}
+                GROUP BY i.term";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $termData = [
+            1 => ['billed' => 0.00, 'paid' => 0.00, 'balance' => 0.00, 'invoices' => 0, 'rate' => 0.0],
+            2 => ['billed' => 0.00, 'paid' => 0.00, 'balance' => 0.00, 'invoices' => 0, 'rate' => 0.0],
+            3 => ['billed' => 0.00, 'paid' => 0.00, 'balance' => 0.00, 'invoices' => 0, 'rate' => 0.0],
+        ];
+
+        $overallBilled = 0.00;
+        $overallPaid = 0.00;
+        $overallBalance = 0.00;
+        $overallInvoices = 0;
+
+        foreach ($rows as $row) {
+            $t = intval($row['term']);
+            if (isset($termData[$t])) {
+                $billed = floatval($row['total_billed']);
+                $paid = floatval($row['total_paid']);
+                $bal = floatval($row['total_balance']);
+                $rate = ($billed > 0) ? round(($paid / $billed) * 100, 1) : 0.0;
+
+                $termData[$t] = [
+                    'billed' => $billed,
+                    'paid' => $paid,
+                    'balance' => $bal,
+                    'invoices' => intval($row['invoice_count']),
+                    'rate' => $rate
+                ];
+
+                $overallBilled += $billed;
+                $overallPaid += $paid;
+                $overallBalance += $bal;
+                $overallInvoices += intval($row['invoice_count']);
+            }
+        }
+
+        $overallRate = ($overallBilled > 0) ? round(($overallPaid / $overallBilled) * 100, 1) : 0.0;
+
+        return [
+            'terms' => $termData,
+            'overall' => [
+                'billed' => $overallBilled,
+                'paid' => $overallPaid,
+                'balance' => $overallBalance,
+                'invoices' => $overallInvoices,
+                'rate' => $overallRate
+            ]
+        ];
+    }
+
+    /**
+     * Get class-wise term breakdown matrix
+     *
+     * @param string|null $academicYear
+     * @return array
+     */
+    public function getClassTermBreakdown($academicYear = null) {
+        $sqlClasses = "SELECT c.id as class_id, c.name as class_name, g.display_name as grade_name,
+                             (SELECT COUNT(*) FROM students s WHERE s.class_id = c.id AND s.status = 'active') as student_count
+                      FROM classes c
+                      LEFT JOIN grades g ON c.grade_id = g.id
+                      WHERE c.status = 'active'
+                      ORDER BY g.level ASC, c.name ASC";
+        $classes = $this->db->query($sqlClasses)->fetchAll(PDO::FETCH_ASSOC);
+
+        $params = [];
+        $where = "1=1";
+        if (!empty($academicYear)) {
+            $where .= " AND i.academic_year = ?";
+            $params[] = $academicYear;
+        }
+
+        $sqlInvoices = "SELECT s.class_id, i.term,
+                               COALESCE(SUM(i.total_amount), 0) as total_billed,
+                               COALESCE(SUM(i.paid_amount), 0) as total_paid,
+                               COALESCE(SUM(i.balance), 0) as total_balance
+                        FROM invoices i
+                        JOIN students s ON i.student_id = s.id
+                        WHERE {$where}
+                        GROUP BY s.class_id, i.term";
+        $stmt = $this->db->prepare($sqlInvoices);
+        $stmt->execute($params);
+        $invoiceRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $matrix = [];
+        foreach ($invoiceRows as $inv) {
+            $cId = $inv['class_id'];
+            $t = intval($inv['term']);
+            if (!isset($matrix[$cId])) {
+                $matrix[$cId] = [];
+            }
+            $matrix[$cId][$t] = [
+                'billed' => floatval($inv['total_billed']),
+                'paid' => floatval($inv['total_paid']),
+                'balance' => floatval($inv['total_balance'])
+            ];
+        }
+
+        $result = [];
+        foreach ($classes as $c) {
+            $cId = $c['class_id'];
+            $t1 = $matrix[$cId][1] ?? ['billed' => 0, 'paid' => 0, 'balance' => 0];
+            $t2 = $matrix[$cId][2] ?? ['billed' => 0, 'paid' => 0, 'balance' => 0];
+            $t3 = $matrix[$cId][3] ?? ['billed' => 0, 'paid' => 0, 'balance' => 0];
+
+            $totBilled = $t1['billed'] + $t2['billed'] + $t3['billed'];
+            $totPaid = $t1['paid'] + $t2['paid'] + $t3['paid'];
+            $totBal = $t1['balance'] + $t2['balance'] + $t3['balance'];
+            $rate = ($totBilled > 0) ? round(($totPaid / $totBilled) * 100, 1) : 0.0;
+
+            $result[] = [
+                'class_id' => $cId,
+                'class_name' => $c['class_name'],
+                'grade_name' => $c['grade_name'],
+                'student_count' => intval($c['student_count']),
+                'term_1' => $t1,
+                'term_2' => $t2,
+                'term_3' => $t3,
+                'total_billed' => $totBilled,
+                'total_paid' => $totPaid,
+                'total_balance' => $totBal,
+                'collection_rate' => $rate
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get student list with term-by-term fee summary and cumulative balance
+     *
+     * @param string|null $academicYear
+     * @param int|null $classId
+     * @param int|null $termFilter
+     * @param string|null $statusFilter ('paid', 'partial', 'pending', 'overpaid')
+     * @param string|null $searchQuery
+     * @return array
+     */
+    public function getStudentTermBalanceList($academicYear = null, $classId = null, $termFilter = null, $statusFilter = null, $searchQuery = null) {
+        $where = "s.status = 'active'";
+        $params = [];
+
+        if (!empty($classId)) {
+            $where .= " AND s.class_id = ?";
+            $params[] = $classId;
+        }
+
+        if (!empty($searchQuery)) {
+            $where .= " AND (s.first_name LIKE ? OR s.last_name LIKE ? OR s.admission_number LIKE ?)";
+            $searchTerm = '%' . $searchQuery . '%';
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+        }
+
+        $sqlStudents = "SELECT s.id as student_id, s.admission_number, s.first_name, s.last_name, s.gender,
+                               c.name as class_name, g.display_name as grade_name
+                        FROM students s
+                        LEFT JOIN classes c ON s.class_id = c.id
+                        LEFT JOIN grades g ON c.grade_id = g.id
+                        WHERE {$where}
+                        ORDER BY c.name ASC, s.first_name ASC, s.last_name ASC";
+
+        $stmt = $this->db->prepare($sqlStudents);
+        $stmt->execute($params);
+        $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($students)) {
+            return [];
+        }
+
+        $studentIds = array_column($students, 'student_id');
+        $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
+
+        $invParams = $studentIds;
+        $invWhere = "student_id IN ({$placeholders})";
+        if (!empty($academicYear)) {
+            $invWhere .= " AND academic_year = ?";
+            $invParams[] = $academicYear;
+        }
+
+        $sqlInvoices = "SELECT student_id, term, total_amount, paid_amount, balance
+                        FROM invoices
+                        WHERE {$invWhere}
+                        ORDER BY term ASC";
+        $stmtInv = $this->db->prepare($sqlInvoices);
+        $stmtInv->execute($invParams);
+        $invoiceRows = $stmtInv->fetchAll(PDO::FETCH_ASSOC);
+
+        $studentInvoiceMap = [];
+        foreach ($invoiceRows as $inv) {
+            $sId = $inv['student_id'];
+            $t = intval($inv['term']);
+            if (!isset($studentInvoiceMap[$sId])) {
+                $studentInvoiceMap[$sId] = [];
+            }
+            $studentInvoiceMap[$sId][$t] = [
+                'billed' => floatval($inv['total_amount']),
+                'paid' => floatval($inv['paid_amount']),
+                'balance' => floatval($inv['balance'])
+            ];
+        }
+
+        $result = [];
+        foreach ($students as $st) {
+            $sId = $st['student_id'];
+            $terms = $studentInvoiceMap[$sId] ?? [];
+
+            $t1 = $terms[1] ?? ['billed' => 0.0, 'paid' => 0.0, 'balance' => 0.0];
+            $t2 = $terms[2] ?? ['billed' => 0.0, 'paid' => 0.0, 'balance' => 0.0];
+            $t3 = $terms[3] ?? ['billed' => 0.0, 'paid' => 0.0, 'balance' => 0.0];
+
+            $totBilled = $t1['billed'] + $t2['billed'] + $t3['billed'];
+            $totPaid = $t1['paid'] + $t2['paid'] + $t3['paid'];
+            $netBalance = $totBilled - $totPaid;
+
+            if ($netBalance < -0.01) {
+                $feeStatus = 'overpaid';
+            } elseif ($netBalance <= 0.01 && $totBilled > 0) {
+                $feeStatus = 'paid';
+            } elseif ($totPaid > 0) {
+                $feeStatus = 'partial';
+            } else {
+                $feeStatus = 'pending';
+            }
+
+            // Filter by specific term if requested
+            if (!empty($termFilter)) {
+                $tf = intval($termFilter);
+                $termBal = ($terms[$tf]['balance'] ?? 0.0);
+                if ($statusFilter === 'paid' && $termBal > 0.01) continue;
+                if ($statusFilter === 'pending' && $termBal <= 0.01) continue;
+                if ($statusFilter === 'partial' && ($termBal <= 0.01 || ($terms[$tf]['paid'] ?? 0) == 0)) continue;
+            } elseif (!empty($statusFilter)) {
+                if ($statusFilter !== 'all' && $feeStatus !== $statusFilter) {
+                    continue;
+                }
+            }
+
+            $st['t1'] = $t1;
+            $st['t2'] = $t2;
+            $st['t3'] = $t3;
+            $st['total_billed'] = $totBilled;
+            $st['total_paid'] = $totPaid;
+            $st['net_balance'] = $netBalance;
+            $st['fee_status'] = $feeStatus;
+
+            $result[] = $st;
+        }
+
+        return $result;
+    }
 }
 

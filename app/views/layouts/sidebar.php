@@ -106,8 +106,14 @@ if (in_array($role, ['super_admin', 'school_admin', 'school_manager', 'accountan
         'icon' => 'fa-money-bill-wave',
         'url' => '/fees',
         'roles' => ['super_admin', 'school_admin', 'school_manager', 'accountant', 'bursar'],
-        'active' => $currentSegment === 'fees' || $currentSegment === 'feeheads' || ($currentSegment === 'fees' && $secondSegment === 'reconcile') || $currentSegment === 'equitybank' || $currentSegment === 'kcbbank' || $currentSegment === 'mpesa' || $currentSegment === 'payments',
+        'active' => $currentSegment === 'fees' || $currentSegment === 'feeheads' || $currentSegment === 'feereport' || ($currentSegment === 'fees' && $secondSegment === 'reconcile') || $currentSegment === 'equitybank' || $currentSegment === 'kcbbank' || $currentSegment === 'mpesa' || $currentSegment === 'payments',
         'children' => [
+            [
+                'title' => 'Term Fee Summary',
+                'icon' => 'fa-file-invoice-dollar',
+                'url' => '/feereport/terms',
+                'active' => $currentSegment === 'feereport'
+            ],
             [
                 'title' => 'Fee Heads',
                 'icon' => 'fa-list',
@@ -276,7 +282,33 @@ if (in_array($role, ['super_admin', 'school_admin', 'school_manager', 'accountan
         'icon' => 'fa-chart-bar',
         'url' => '/reports',
         'roles' => ['super_admin', 'school_admin', 'school_manager', 'accountant', 'bursar', 'head_teacher'],
-        'active' => $currentSegment === 'reports'
+        'active' => $currentSegment === 'reports' || $currentSegment === 'feereport',
+        'children' => [
+            [
+                'title' => 'Term Fee Summary',
+                'icon' => 'fa-file-invoice-dollar',
+                'url' => '/feereport/terms',
+                'active' => $currentSegment === 'feereport'
+            ],
+            [
+                'title' => 'Financial Report',
+                'icon' => 'fa-chart-line',
+                'url' => '/reports/financial',
+                'active' => $currentSegment === 'reports' && $secondSegment === 'financial'
+            ],
+            [
+                'title' => 'Student Report',
+                'icon' => 'fa-users',
+                'url' => '/reports/students',
+                'active' => $currentSegment === 'reports' && $secondSegment === 'students'
+            ],
+            [
+                'title' => 'Attendance Report',
+                'icon' => 'fa-calendar-check',
+                'url' => '/reports/attendance',
+                'active' => $currentSegment === 'reports' && $secondSegment === 'attendance'
+            ]
+        ]
     ];
 }
 

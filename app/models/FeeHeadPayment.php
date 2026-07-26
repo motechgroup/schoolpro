@@ -250,4 +250,64 @@ class FeeHeadPayment extends Model {
             'headBreakdown' => $feeHeads
         ];
     }
+
+    /**
+     * Get Fee Head Collection Breakdown by Term (Term 1, Term 2, Term 3)
+     *
+     * @param string|null $academicYear
+     * @return array
+     */
+    public function getFeeHeadCollectionByTerm($academicYear = null) {
+        $where = "sfh.status = 'active'";
+        $params = [];
+        if (!empty($academicYear)) {
+            $where .= " AND sfh.academic_year = ?";
+            $params[] = $academicYear;
+        }
+
+        $sql = "SELECT fh.id as fee_head_id, fh.name as fee_head_name, fh.code as fee_head_code,
+                       sfh.term,
+                       COALESCE(SUM(sfh.amount), 0) as total_billed,
+                       COALESCE(SUM(fhp.amount), 0) as total_collected
+                FROM fee_heads fh
+                LEFT JOIN student_fee_heads sfh ON fh.id = sfh.fee_head_id AND {$where}
+                LEFT JOIN fee_head_payments fhp ON sfh.id = fhp.student_fee_head_id
+                GROUP BY fh.id, sfh.term
+                ORDER BY (CASE WHEN fh.code = 'TUITION' OR LOWER(fh.name) LIKE '%tuition%' THEN 0 ELSE 1 END), fh.name";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Group results by fee head
+        $grouped = [];
+        foreach ($rows as $r) {
+            $fhId = $r['fee_head_id'];
+            if (!isset($grouped[$fhId])) {
+                $grouped[$fhId] = [
+                    'fee_head_id' => $fhId,
+                    'fee_head_name' => $r['fee_head_name'],
+                    'fee_head_code' => $r['fee_head_code'],
+                    'is_tuition' => ($r['fee_head_code'] === 'TUITION' || stripos($r['fee_head_name'], 'tuition') !== false),
+                    't1' => ['billed' => 0.0, 'collected' => 0.0],
+                    't2' => ['billed' => 0.0, 'collected' => 0.0],
+                    't3' => ['billed' => 0.0, 'collected' => 0.0],
+                    'total_billed' => 0.0,
+                    'total_collected' => 0.0
+                ];
+            }
+
+            $t = intval($r['term']);
+            $billed = floatval($r['total_billed']);
+            $collected = floatval($r['total_collected']);
+
+            if ($t >= 1 && $t <= 3) {
+                $grouped[$fhId]['t' . $t] = ['billed' => $billed, 'collected' => $collected];
+                $grouped[$fhId]['total_billed'] += $billed;
+                $grouped[$fhId]['total_collected'] += $collected;
+            }
+        }
+
+        return array_values($grouped);
+    }
 }

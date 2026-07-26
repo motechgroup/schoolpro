@@ -186,5 +186,13 @@ class ReportController extends Controller {
         
         $this->view('reports/financial', $data);
     }
+
+    /**
+     * Term Fee Summary & Report - Redirects to FeeReportController terms action
+     */
+    public function terms() {
+        $queryString = !empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '';
+        $this->redirect('/feereport/terms' . $queryString);
+    }
 }
 

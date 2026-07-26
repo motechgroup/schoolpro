@@ -19,7 +19,23 @@
     </div>
     
     <!-- Report Navigation Header Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <?php if (Auth::hasAnyRole(['super_admin', 'school_admin', 'bursar', 'accountant'])): ?>
+        <a href="<?php echo BASE_URL; ?>/feereport/terms" class="bg-white rounded-xl shadow-sm hover:shadow-md border border-purple-100 p-6 transition duration-200 group border-l-4 border-l-purple-600">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-xl group-hover:scale-110 transition duration-200">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                </div>
+                <span class="text-xs font-bold px-2.5 py-1 bg-purple-50 text-purple-700 rounded-full">Term Fees</span>
+            </div>
+            <h2 class="text-xl font-bold text-gray-800 group-hover:text-purple-700 transition">Term Fee Summary</h2>
+            <p class="text-gray-500 text-sm mt-1">Term-by-term fee collections, class matrices, and student balance reports.</p>
+            <div class="mt-4 text-xs font-semibold text-purple-700 flex items-center">
+                View Term Report <i class="fas fa-arrow-right ml-1 group-hover:translate-x-1 transition"></i>
+            </div>
+        </a>
+        <?php endif; ?>
+
         <a href="<?php echo BASE_URL; ?>/reports/students" class="bg-white rounded-xl shadow-sm hover:shadow-md border border-gray-100 p-6 transition duration-200 group">
             <div class="flex items-center justify-between mb-4">
                 <div class="w-12 h-12 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-xl group-hover:scale-110 transition duration-200">
@@ -51,14 +67,14 @@
         <?php if (Auth::hasAnyRole(['super_admin', 'school_admin', 'bursar', 'accountant'])): ?>
         <a href="<?php echo BASE_URL; ?>/reports/financial" class="bg-white rounded-xl shadow-sm hover:shadow-md border border-gray-100 p-6 transition duration-200 group">
             <div class="flex items-center justify-between mb-4">
-                <div class="w-12 h-12 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center text-xl group-hover:scale-110 transition duration-200">
+                <div class="w-12 h-12 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-xl group-hover:scale-110 transition duration-200">
                     <i class="fas fa-chart-line"></i>
                 </div>
-                <span class="text-xs font-semibold px-2.5 py-1 bg-purple-50 text-purple-700 rounded-full">Financials</span>
+                <span class="text-xs font-semibold px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-full">Financials</span>
             </div>
-            <h2 class="text-xl font-bold text-gray-800 group-hover:text-purple-600 transition">Financial Report</h2>
+            <h2 class="text-xl font-bold text-gray-800 group-hover:text-indigo-600 transition">Financial Audit</h2>
             <p class="text-gray-500 text-sm mt-1">Audit fee collections, tuition vs other fee heads, and balance reconciliations.</p>
-            <div class="mt-4 text-xs font-semibold text-purple-600 flex items-center">
+            <div class="mt-4 text-xs font-semibold text-indigo-600 flex items-center">
                 Generate Report <i class="fas fa-arrow-right ml-1 group-hover:translate-x-1 transition"></i>
             </div>
         </a>
