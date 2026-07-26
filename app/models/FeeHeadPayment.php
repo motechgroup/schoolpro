@@ -252,6 +252,40 @@ class FeeHeadPayment extends Model {
     }
 
     /**
+     * Build flexible SQL condition for academic year matching
+     */
+    private function buildAcademicYearWhereClause($columnName, $academicYear, &$params) {
+        if (empty($academicYear) || $academicYear === 'all') {
+            return "1=1";
+        }
+
+        $trimmed = trim($academicYear);
+        preg_match_all('/\d{4}/', $trimmed, $matches);
+        $years = array_unique($matches[0] ?? []);
+
+        $conditions = [
+            "{$columnName} = ?",
+            "TRIM({$columnName}) = ?",
+            "REPLACE({$columnName}, '-', '/') = ?",
+            "REPLACE({$columnName}, '/', '-') = ?"
+        ];
+
+        $params[] = $trimmed;
+        $params[] = $trimmed;
+        $params[] = str_replace('-', '/', $trimmed);
+        $params[] = str_replace('/', '-', $trimmed);
+
+        foreach ($years as $y) {
+            $conditions[] = "{$columnName} LIKE ?";
+            $params[] = '%' . $y . '%';
+        }
+
+        $conditions[] = "({$columnName} IS NULL OR {$columnName} = '')";
+
+        return "(" . implode(" OR ", $conditions) . ")";
+    }
+
+    /**
      * Get Fee Head Collection Breakdown by Term (Term 1, Term 2, Term 3)
      *
      * @param string|null $academicYear
@@ -260,10 +294,8 @@ class FeeHeadPayment extends Model {
     public function getFeeHeadCollectionByTerm($academicYear = null) {
         $where = "sfh.status = 'active'";
         $params = [];
-        if (!empty($academicYear)) {
-            $where .= " AND (sfh.academic_year = ? OR TRIM(sfh.academic_year) = ?)";
-            $params[] = $academicYear;
-            $params[] = trim($academicYear);
+        if (!empty($academicYear) && $academicYear !== 'all') {
+            $where .= " AND " . $this->buildAcademicYearWhereClause('sfh.academic_year', $academicYear, $params);
         }
 
         $sql = "SELECT fh.id as fee_head_id, fh.name as fee_head_name, fh.code as fee_head_code,
@@ -319,10 +351,8 @@ class FeeHeadPayment extends Model {
         if ($grandTotalBilled == 0 && $grandTotalCollected == 0) {
             $invWhere = "1=1";
             $invParams = [];
-            if (!empty($academicYear)) {
-                $invWhere .= " AND (academic_year = ? OR TRIM(academic_year) = ?)";
-                $invParams[] = $academicYear;
-                $invParams[] = trim($academicYear);
+            if (!empty($academicYear) && $academicYear !== 'all') {
+                $invWhere .= " AND " . $this->buildAcademicYearWhereClause('academic_year', $academicYear, $invParams);
             }
 
             $invStmt = $this->db->prepare("SELECT term,
@@ -331,6 +361,14 @@ class FeeHeadPayment extends Model {
                                            FROM invoices
                                            WHERE {$invWhere}
                                            GROUP BY term");
+            $invStmt->execute($invParams);
+            $invTermRows = $invStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Re-query fallback without academic year if still 0
+            if (empty($invTermRows) && !empty($academicYear)) {
+                $invStmt = $this->db->query("SELECT term, COALESCE(SUM(total_amount), 0) as total_billed, COALESCE(SUM(paid_amount), 0) as total_paid FROM invoices GROUP BY term");
+                $invTermRows = $invStmt->fetchAll(PDO::FETCH_ASSOC);
+            }
             $invStmt->execute($invParams);
             $invTermRows = $invStmt->fetchAll(PDO::FETCH_ASSOC);
 

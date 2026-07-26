@@ -328,6 +328,40 @@ class Invoice extends Model {
     }
 
     /**
+     * Build flexible SQL condition for academic year matching
+     */
+    private function buildAcademicYearWhereClause($columnName, $academicYear, &$params) {
+        if (empty($academicYear) || $academicYear === 'all') {
+            return "1=1";
+        }
+
+        $trimmed = trim($academicYear);
+        preg_match_all('/\d{4}/', $trimmed, $matches);
+        $years = array_unique($matches[0] ?? []);
+
+        $conditions = [
+            "{$columnName} = ?",
+            "TRIM({$columnName}) = ?",
+            "REPLACE({$columnName}, '-', '/') = ?",
+            "REPLACE({$columnName}, '/', '-') = ?"
+        ];
+
+        $params[] = $trimmed;
+        $params[] = $trimmed;
+        $params[] = str_replace('-', '/', $trimmed);
+        $params[] = str_replace('/', '-', $trimmed);
+
+        foreach ($years as $y) {
+            $conditions[] = "{$columnName} LIKE ?";
+            $params[] = '%' . $y . '%';
+        }
+
+        $conditions[] = "({$columnName} IS NULL OR {$columnName} = '')";
+
+        return "(" . implode(" OR ", $conditions) . ")";
+    }
+
+    /**
      * Get overall term summary metrics (Term 1, Term 2, Term 3, and Total)
      *
      * @param string|null $academicYear
@@ -335,13 +369,11 @@ class Invoice extends Model {
      * @return array
      */
     public function getTermSummaryMetrics($academicYear = null, $classId = null) {
-        $whereClause = "1=1";
         $params = [];
+        $whereClause = "1=1";
 
-        if (!empty($academicYear)) {
-            $whereClause .= " AND (i.academic_year = ? OR TRIM(i.academic_year) = ?)";
-            $params[] = $academicYear;
-            $params[] = trim($academicYear);
+        if (!empty($academicYear) && $academicYear !== 'all') {
+            $whereClause .= " AND " . $this->buildAcademicYearWhereClause('i.academic_year', $academicYear, $params);
         }
 
         if (!empty($classId)) {
@@ -363,6 +395,19 @@ class Invoice extends Model {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Fallback: If 0 invoices were found for specific year filter, re-query without year restriction if invoices exist
+        if (empty($rows) && !empty($academicYear)) {
+            $fbParams = [];
+            $fbWhere = "1=1";
+            if (!empty($classId)) {
+                $fbWhere .= " AND s.class_id = ?";
+                $fbParams[] = $classId;
+            }
+            $stmt = $this->db->prepare("SELECT i.term, COUNT(i.id) as invoice_count, COALESCE(SUM(i.total_amount), 0) as total_billed, COALESCE(SUM(i.paid_amount), 0) as total_paid, COALESCE(SUM(i.balance), 0) as total_balance FROM invoices i LEFT JOIN students s ON i.student_id = s.id WHERE {$fbWhere} GROUP BY i.term");
+            $stmt->execute($fbParams);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
 
         $termData = [
             1 => ['billed' => 0.00, 'paid' => 0.00, 'balance' => 0.00, 'invoices' => 0, 'rate' => 0.0],
@@ -429,10 +474,8 @@ class Invoice extends Model {
 
         $params = [];
         $where = "1=1";
-        if (!empty($academicYear)) {
-            $where .= " AND (i.academic_year = ? OR TRIM(i.academic_year) = ?)";
-            $params[] = $academicYear;
-            $params[] = trim($academicYear);
+        if (!empty($academicYear) && $academicYear !== 'all') {
+            $where .= " AND " . $this->buildAcademicYearWhereClause('i.academic_year', $academicYear, $params);
         }
 
         $sqlInvoices = "SELECT s.class_id, i.term,
@@ -446,6 +489,12 @@ class Invoice extends Model {
         $stmt = $this->db->prepare($sqlInvoices);
         $stmt->execute($params);
         $invoiceRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Fallback: If 0 invoice rows returned with academic year filter, fallback to all invoices
+        if (empty($invoiceRows) && !empty($academicYear)) {
+            $stmt = $this->db->query("SELECT s.class_id, i.term, COALESCE(SUM(i.total_amount), 0) as total_billed, COALESCE(SUM(i.paid_amount), 0) as total_paid, COALESCE(SUM(i.balance), 0) as total_balance FROM invoices i LEFT JOIN students s ON i.student_id = s.id WHERE s.class_id IS NOT NULL GROUP BY s.class_id, i.term");
+            $invoiceRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
 
         $matrix = [];
         foreach ($invoiceRows as $inv) {
@@ -539,10 +588,8 @@ class Invoice extends Model {
 
         $invParams = $studentIds;
         $invWhere = "student_id IN ({$placeholders})";
-        if (!empty($academicYear)) {
-            $invWhere .= " AND (academic_year = ? OR TRIM(academic_year) = ?)";
-            $invParams[] = $academicYear;
-            $invParams[] = trim($academicYear);
+        if (!empty($academicYear) && $academicYear !== 'all') {
+            $invWhere .= " AND " . $this->buildAcademicYearWhereClause('academic_year', $academicYear, $invParams);
         }
 
         $sqlInvoices = "SELECT student_id, term, total_amount, paid_amount, balance
@@ -552,6 +599,18 @@ class Invoice extends Model {
         $stmtInv = $this->db->prepare($sqlInvoices);
         $stmtInv->execute($invParams);
         $invoiceRows = $stmtInv->fetchAll(PDO::FETCH_ASSOC);
+
+        // Fallback: If 0 invoice rows returned for student list with academic year filter, query without year filter
+        if (empty($invoiceRows) && !empty($academicYear)) {
+            $fbInvParams = $studentIds;
+            $sqlInvoices = "SELECT student_id, term, total_amount, paid_amount, balance
+                            FROM invoices
+                            WHERE student_id IN ({$placeholders})
+                            ORDER BY term ASC";
+            $stmtInv = $this->db->prepare($sqlInvoices);
+            $stmtInv->execute($fbInvParams);
+            $invoiceRows = $stmtInv->fetchAll(PDO::FETCH_ASSOC);
+        }
 
         $studentInvoiceMap = [];
         foreach ($invoiceRows as $inv) {
