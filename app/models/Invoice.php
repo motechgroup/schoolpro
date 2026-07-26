@@ -339,8 +339,9 @@ class Invoice extends Model {
         $params = [];
 
         if (!empty($academicYear)) {
-            $whereClause .= " AND i.academic_year = ?";
+            $whereClause .= " AND (i.academic_year = ? OR TRIM(i.academic_year) = ?)";
             $params[] = $academicYear;
+            $params[] = trim($academicYear);
         }
 
         if (!empty($classId)) {
@@ -355,7 +356,7 @@ class Invoice extends Model {
                     COALESCE(SUM(i.paid_amount), 0) as total_paid,
                     COALESCE(SUM(i.balance), 0) as total_balance
                 FROM invoices i
-                JOIN students s ON i.student_id = s.id
+                LEFT JOIN students s ON i.student_id = s.id
                 WHERE {$whereClause}
                 GROUP BY i.term";
 
@@ -429,8 +430,9 @@ class Invoice extends Model {
         $params = [];
         $where = "1=1";
         if (!empty($academicYear)) {
-            $where .= " AND i.academic_year = ?";
+            $where .= " AND (i.academic_year = ? OR TRIM(i.academic_year) = ?)";
             $params[] = $academicYear;
+            $params[] = trim($academicYear);
         }
 
         $sqlInvoices = "SELECT s.class_id, i.term,
@@ -438,8 +440,8 @@ class Invoice extends Model {
                                COALESCE(SUM(i.paid_amount), 0) as total_paid,
                                COALESCE(SUM(i.balance), 0) as total_balance
                         FROM invoices i
-                        JOIN students s ON i.student_id = s.id
-                        WHERE {$where}
+                        LEFT JOIN students s ON i.student_id = s.id
+                        WHERE {$where} AND s.class_id IS NOT NULL
                         GROUP BY s.class_id, i.term";
         $stmt = $this->db->prepare($sqlInvoices);
         $stmt->execute($params);
@@ -538,8 +540,9 @@ class Invoice extends Model {
         $invParams = $studentIds;
         $invWhere = "student_id IN ({$placeholders})";
         if (!empty($academicYear)) {
-            $invWhere .= " AND academic_year = ?";
+            $invWhere .= " AND (academic_year = ? OR TRIM(academic_year) = ?)";
             $invParams[] = $academicYear;
+            $invParams[] = trim($academicYear);
         }
 
         $sqlInvoices = "SELECT student_id, term, total_amount, paid_amount, balance

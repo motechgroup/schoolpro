@@ -22,6 +22,41 @@ class FeeReportController extends Controller {
     }
 
     /**
+     * Helper to resolve academic year filter with smart fallback
+     */
+    private function resolveAcademicYearFilter() {
+        if (isset($_GET['academic_year'])) {
+            $input = trim($_GET['academic_year']);
+            if ($input === 'all' || $input === '') {
+                return null;
+            }
+            return $input;
+        }
+
+        // Default load (no academic_year in $_GET)
+        $currentYear = getAcademicYearName();
+        $db = Database::getInstance()->getConnection();
+        
+        // 1. Check if current academic year has invoices
+        $stmt = $db->prepare("SELECT COUNT(*) FROM invoices WHERE academic_year = ? OR TRIM(academic_year) = ?");
+        $stmt->execute([$currentYear, $currentYear]);
+        if ($stmt->fetchColumn() > 0) {
+            return $currentYear;
+        }
+
+        // 2. If current year has 0 invoices, find latest year that DOES have invoices
+        $latestStmt = $db->query("SELECT academic_year FROM invoices WHERE academic_year IS NOT NULL AND academic_year != '' ORDER BY id DESC LIMIT 1");
+        $latestYear = $latestStmt->fetchColumn();
+
+        if (!empty($latestYear)) {
+            return trim($latestYear);
+        }
+
+        // 3. Fallback to null (all)
+        return null;
+    }
+
+    /**
      * Term-by-term fee summary report
      */
     public function terms() {
@@ -39,10 +74,7 @@ class FeeReportController extends Controller {
         $academicYears = $academicYearModel->getAll();
         $classes = $classModel->getAllWithDetails();
 
-        $selectedYear = $_GET['academic_year'] ?? getAcademicYearName();
-        if ($selectedYear === 'all') {
-            $selectedYear = null;
-        }
+        $selectedYear = $this->resolveAcademicYearFilter();
 
         $selectedTerm = !empty($_GET['term']) ? intval($_GET['term']) : null;
         $selectedClass = !empty($_GET['class_id']) ? intval($_GET['class_id']) : null;
@@ -63,7 +95,7 @@ class FeeReportController extends Controller {
             'feeHeadBreakdown' => $feeHeadBreakdown,
             'studentList' => $studentList,
             'filters' => [
-                'academic_year' => $_GET['academic_year'] ?? getAcademicYearName(),
+                'academic_year' => $selectedYear ?? 'all',
                 'term' => $selectedTerm,
                 'class_id' => $selectedClass,
                 'status' => $selectedStatus,
@@ -84,11 +116,7 @@ class FeeReportController extends Controller {
         }
 
         $invoiceModel = $this->model('Invoice');
-        
-        $selectedYear = $_GET['academic_year'] ?? getAcademicYearName();
-        if ($selectedYear === 'all') {
-            $selectedYear = null;
-        }
+        $selectedYear = $this->resolveAcademicYearFilter();
 
         $selectedTerm = !empty($_GET['term']) ? intval($_GET['term']) : null;
         $selectedClass = !empty($_GET['class_id']) ? intval($_GET['class_id']) : null;

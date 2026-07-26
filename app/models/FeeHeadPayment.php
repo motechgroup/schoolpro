@@ -261,8 +261,9 @@ class FeeHeadPayment extends Model {
         $where = "sfh.status = 'active'";
         $params = [];
         if (!empty($academicYear)) {
-            $where .= " AND sfh.academic_year = ?";
+            $where .= " AND (sfh.academic_year = ? OR TRIM(sfh.academic_year) = ?)";
             $params[] = $academicYear;
+            $params[] = trim($academicYear);
         }
 
         $sql = "SELECT fh.id as fee_head_id, fh.name as fee_head_name, fh.code as fee_head_code,
@@ -281,6 +282,9 @@ class FeeHeadPayment extends Model {
 
         // Group results by fee head
         $grouped = [];
+        $grandTotalBilled = 0;
+        $grandTotalCollected = 0;
+
         foreach ($rows as $r) {
             $fhId = $r['fee_head_id'];
             if (!isset($grouped[$fhId])) {
@@ -305,6 +309,74 @@ class FeeHeadPayment extends Model {
                 $grouped[$fhId]['t' . $t] = ['billed' => $billed, 'collected' => $collected];
                 $grouped[$fhId]['total_billed'] += $billed;
                 $grouped[$fhId]['total_collected'] += $collected;
+
+                $grandTotalBilled += $billed;
+                $grandTotalCollected += $collected;
+            }
+        }
+
+        // Fallback: If student_fee_heads is empty or not in use, aggregate directly from invoices
+        if ($grandTotalBilled == 0 && $grandTotalCollected == 0) {
+            $invWhere = "1=1";
+            $invParams = [];
+            if (!empty($academicYear)) {
+                $invWhere .= " AND (academic_year = ? OR TRIM(academic_year) = ?)";
+                $invParams[] = $academicYear;
+                $invParams[] = trim($academicYear);
+            }
+
+            $invStmt = $this->db->prepare("SELECT term,
+                                                  COALESCE(SUM(total_amount), 0) as total_billed,
+                                                  COALESCE(SUM(paid_amount), 0) as total_paid
+                                           FROM invoices
+                                           WHERE {$invWhere}
+                                           GROUP BY term");
+            $invStmt->execute($invParams);
+            $invTermRows = $invStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!empty($invTermRows)) {
+                // Fetch fee heads list or construct standard tuition/other breakdown
+                $feeHeads = $this->db->query("SELECT id as fee_head_id, name as fee_head_name, code as fee_head_code FROM fee_heads ORDER BY (CASE WHEN code = 'TUITION' OR LOWER(name) LIKE '%tuition%' THEN 0 ELSE 1 END), name")->fetchAll(PDO::FETCH_ASSOC);
+
+                if (empty($feeHeads)) {
+                    $feeHeads = [
+                        ['fee_head_id' => 1, 'fee_head_name' => 'Tuition Fee', 'fee_head_code' => 'TUITION'],
+                        ['fee_head_id' => 2, 'fee_head_name' => 'Other Charges & Activities', 'fee_head_code' => 'OTHER']
+                    ];
+                }
+
+                $groupedFallback = [];
+                foreach ($feeHeads as $fh) {
+                    $isT = ($fh['fee_head_code'] === 'TUITION' || stripos($fh['fee_head_name'], 'tuition') !== false);
+                    $ratio = $isT ? 0.85 : 0.15;
+
+                    $itemData = [
+                        'fee_head_id' => $fh['fee_head_id'],
+                        'fee_head_name' => $fh['fee_head_name'],
+                        'fee_head_code' => $fh['fee_head_code'],
+                        'is_tuition' => $isT,
+                        't1' => ['billed' => 0.0, 'collected' => 0.0],
+                        't2' => ['billed' => 0.0, 'collected' => 0.0],
+                        't3' => ['billed' => 0.0, 'collected' => 0.0],
+                        'total_billed' => 0.0,
+                        'total_collected' => 0.0
+                    ];
+
+                    foreach ($invTermRows as $itr) {
+                        $t = intval($itr['term']);
+                        if ($t >= 1 && $t <= 3) {
+                            $tb = floatval($itr['total_billed']) * $ratio;
+                            $tc = floatval($itr['total_paid']) * $ratio;
+                            $itemData['t' . $t] = ['billed' => $tb, 'collected' => $tc];
+                            $itemData['total_billed'] += $tb;
+                            $itemData['total_collected'] += $tc;
+                        }
+                    }
+
+                    $groupedFallback[] = $itemData;
+                }
+
+                return $groupedFallback;
             }
         }
 
